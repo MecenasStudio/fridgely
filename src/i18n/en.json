@@ -1,4 +1,32 @@
 ﻿{
-  "app": { "name": "Fridgely", "tagline": "Plan meals. Waste less food." },
-  "nav": { "fridge": "Fridge", "recipes": "Recipes", "plan": "Plan", "shopping": "Shopping", "settings": "Settings" }
+    "app":  {
+                "name":  "Fridgely",
+                "tagline":  "Plan meals. Waste less food."
+            },
+    "nav":  {
+                "fridge":  "Fridge",
+                "recipes":  "Recipes",
+                "plan":  "Plan",
+                "shopping":  "Shopping",
+                "settings":  "Settings"
+            },
+    "auth":  {
+                 "signIn":  "Sign in",
+                 "signUp":  "Create account",
+                 "signOut":  "Sign out",
+                 "email":  "E-mail",
+                 "password":  "Password",
+                 "magicLink":  "Email me a sign-in link",
+                 "switchToSignUp":  "I need an account",
+                 "switchToSignIn":  "I already have an account",
+                 "checkEmail":  "Check your inbox."
+             },
+    "household":  {
+                      "title":  "Your household",
+                      "name":  "Household name",
+                      "create":  "Create household",
+                      "code":  "Invite code",
+                      "join":  "Join",
+                      "inviteCode":  "Invite code: {{code}}"
+                  }
 }

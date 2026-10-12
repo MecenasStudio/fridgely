@@ -1,11 +1,23 @@
 ﻿import { useTranslation } from 'react-i18next'
+import { AuthGate } from './features/auth/AuthGate'
+import { useHousehold } from './features/household/useHousehold'
+import { HouseholdSetup } from './features/household/HouseholdSetup'
+import { supabase } from './lib/supabase'
 
-export default function App() {
+function Home({ userId }: { userId: string }) {
   const { t } = useTranslation()
+  const h = useHousehold(userId)
+  if (h.loading) return null
+  if (!h.householdId) return <HouseholdSetup h={h} />
   return (
     <main>
       <h1>{t('app.name')}</h1>
-      <p>{t('app.tagline')}</p>
+      <p>{t('household.inviteCode', { code: h.inviteCode })}</p>
+      <button onClick={() => supabase.auth.signOut()}>{t('auth.signOut')}</button>
     </main>
   )
+}
+
+export default function App() {
+  return <AuthGate>{(session) => <Home userId={session.user.id} />}</AuthGate>
 }
