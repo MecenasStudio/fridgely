@@ -25,3 +25,9 @@ export function expiryStatus(
   if (days < 0) return 'expired'
   return days <= SOON_DAYS ? 'soon' : 'ok'
 }
+
+export function todayISO(now: Date = new Date()): string {
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${m}-${d}`
+}

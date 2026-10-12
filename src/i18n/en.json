@@ -28,5 +28,17 @@
                       "code":  "Invite code",
                       "join":  "Join",
                       "inviteCode":  "Invite code: {{code}}"
-                  }
+                  },
+    "fridge":  {
+                   "name":  "Product name",
+                   "quantity":  "Quantity",
+                   "unit":  "Unit",
+                   "expiresOn":  "Expiry date",
+                   "add":  "Add",
+                   "empty":  "Your fridge is empty.",
+                   "addExpiry":  "Add expiry date",
+                   "expired":  "Expired",
+                   "soon":  "Soon",
+                   "remove":  "Remove"
+               }
 }

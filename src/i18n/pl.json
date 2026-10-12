@@ -28,5 +28,17 @@
                       "code":  "Kod zaproszenia",
                       "join":  "Dołącz",
                       "inviteCode":  "Kod zaproszenia: {{code}}"
-                  }
+                  },
+    "fridge":  {
+                   "name":  "Nazwa produktu",
+                   "quantity":  "Ilość",
+                   "unit":  "Jednostka",
+                   "expiresOn":  "Data ważności",
+                   "add":  "Dodaj",
+                   "empty":  "Lodówka jest pusta.",
+                   "addExpiry":  "Uzupełnij datę ważności",
+                   "expired":  "Przeterminowane",
+                   "soon":  "Wkrótce",
+                   "remove":  "Usuń"
+               }
 }
