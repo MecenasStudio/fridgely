@@ -40,5 +40,22 @@
                    "expired":  "Expired",
                    "soon":  "Soon",
                    "remove":  "Remove"
-               }
+               },
+    "recipes":  {
+                    "title":  "Recipe title",
+                    "ingredientsHint":  "Ingredients, one per line: qty unit name (e.g. 0.5 l milk)",
+                    "steps":  "Steps, one per line",
+                    "add":  "Add recipe",
+                    "empty":  "No recipes yet.",
+                    "delete":  "Delete"
+                },
+    "plan":  {
+                 "randomize":  "Randomize week",
+                 "none":  "— none —",
+                 "noRecipes":  "Add some recipes first."
+             },
+    "shopping":  {
+                     "generate":  "Build list from plan",
+                     "empty":  "Nothing to buy."
+                 }
 }

@@ -1,21 +1,53 @@
-﻿import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AuthGate } from './features/auth/AuthGate'
 import { useHousehold } from './features/household/useHousehold'
 import { HouseholdSetup } from './features/household/HouseholdSetup'
 import { FridgePage } from './features/fridge/FridgePage'
+import { RecipesPage } from './features/recipes/RecipesPage'
+import { PlanPage } from './features/plan/PlanPage'
+import { ShoppingPage } from './features/shopping/ShoppingPage'
 import { supabase } from './lib/supabase'
 
+const TABS = ['fridge', 'recipes', 'plan', 'shopping'] as const
+type Tab = (typeof TABS)[number]
+
 function Home({ userId }: { userId: string }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const h = useHousehold(userId)
+  const [tab, setTab] = useState<Tab>('fridge')
   if (h.loading) return null
   if (!h.householdId) return <HouseholdSetup h={h} />
+  const id = h.householdId
+
   return (
     <main>
-      <h1>{t('app.name')}</h1>
-      <p>{t('household.inviteCode', { code: h.inviteCode })}</p>
-      <FridgePage householdId={h.householdId} />
-      <button onClick={() => supabase.auth.signOut()}>{t('auth.signOut')}</button>
+      <header>
+        <h1>{t('app.name')}</h1>
+        <nav>
+          {TABS.map((k) => (
+            <button key={k} type="button" aria-pressed={tab === k} onClick={() => setTab(k)}>
+              {t(`nav.${k}`)}
+            </button>
+          ))}
+        </nav>
+      </header>
+      {tab === 'fridge' && <FridgePage householdId={id} />}
+      {tab === 'recipes' && <RecipesPage householdId={id} />}
+      {tab === 'plan' && <PlanPage householdId={id} />}
+      {tab === 'shopping' && <ShoppingPage householdId={id} />}
+      <footer>
+        <p>{t('household.inviteCode', { code: h.inviteCode })}</p>
+        <select
+          aria-label={t('nav.settings')}
+          value={i18n.resolvedLanguage}
+          onChange={(e) => i18n.changeLanguage(e.target.value)}
+        >
+          <option value="pl">Polski</option>
+          <option value="en">English</option>
+        </select>
+        <button type="button" onClick={() => supabase.auth.signOut()}>{t('auth.signOut')}</button>
+      </footer>
     </main>
   )
 }
@@ -23,4 +55,3 @@ function Home({ userId }: { userId: string }) {
 export default function App() {
   return <AuthGate>{(session) => <Home userId={session.user.id} />}</AuthGate>
 }
-

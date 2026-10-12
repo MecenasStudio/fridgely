@@ -40,5 +40,22 @@
                    "expired":  "Przeterminowane",
                    "soon":  "Wkrótce",
                    "remove":  "Usuń"
-               }
+               },
+    "recipes":  {
+                    "title":  "Nazwa przepisu",
+                    "ingredientsHint":  "Składniki, jeden w linii: ilość jednostka nazwa (np. 0,5 l mleko)",
+                    "steps":  "Kroki, jeden w linii",
+                    "add":  "Dodaj przepis",
+                    "empty":  "Brak przepisów.",
+                    "delete":  "Usuń"
+                },
+    "plan":  {
+                 "randomize":  "Losuj tydzień",
+                 "none":  "— brak —",
+                 "noRecipes":  "Najpierw dodaj przepisy."
+             },
+    "shopping":  {
+                     "generate":  "Utwórz listę z planu",
+                     "empty":  "Nic do kupienia."
+                 }
 }
