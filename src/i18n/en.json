@@ -1,0 +1,4 @@
+﻿{
+  "app": { "name": "Fridgely", "tagline": "Plan meals. Waste less food." },
+  "nav": { "fridge": "Fridge", "recipes": "Recipes", "plan": "Plan", "shopping": "Shopping", "settings": "Settings" }
+}

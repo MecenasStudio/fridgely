@@ -1,0 +1,4 @@
+﻿{
+  "app": { "name": "Fridgely", "tagline": "Planuj posiłki. Nie marnuj jedzenia." },
+  "nav": { "fridge": "Lodówka", "recipes": "Przepisy", "plan": "Plan", "shopping": "Zakupy", "settings": "Ustawienia" }
+}
