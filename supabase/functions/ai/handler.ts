@@ -4,10 +4,11 @@
 // API) is injected through `AiHandlerDeps`, so the whole request/response contract
 // is testable off-line. `index.ts` wires the real Deno/Supabase implementations.
 
-import { buildPrompt, systemPrompt } from './prompts'
-import type { AiLocale, AiTask, FridgeItem, Recipe } from './prompts'
+// Deno (like a browser) needs the explicit extension for relative imports.
+import { buildPrompt, systemPrompt } from './prompts.ts'
+import type { AiLocale, AiTask, FridgeItem, Recipe } from './prompts.ts'
 
-export type { AiLocale, AiTask, FridgeItem, Recipe } from './prompts'
+export type { AiLocale, AiTask, FridgeItem, Recipe } from './prompts.ts'
 
 export type AiErrorCode = 'UNAUTHENTICATED' | 'INVALID_REQUEST' | 'NO_API_KEY' | 'UPSTREAM_ERROR'
 
@@ -73,12 +74,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/**
+ * Single-line, printable name. A product name from the client ends up verbatim in
+ * the prompt, so control characters and newlines would let a name forge an extra
+ * fridge line or a fake instruction. Validation and the prompt therefore share this
+ * one sanitized value.
+ */
+function sanitizeName(name: string): string {
+  return name.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 function parseFridgeItem(value: unknown): FridgeItem {
   if (!isRecord(value)) throw new Error('fridge item must be an object')
   const { name, quantity, unit, expiresOn } = value
   if (typeof name !== 'string') throw new Error('name must be a string')
-  const trimmed = name.trim()
-  if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) throw new Error('bad name')
+  const clean = sanitizeName(name)
+  if (clean.length === 0 || clean.length > MAX_NAME_LENGTH) throw new Error('bad name')
   if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity <= 0) {
     throw new Error('bad quantity')
   }
@@ -88,7 +99,7 @@ function parseFridgeItem(value: unknown): FridgeItem {
   if (expiresOn !== null && !(typeof expiresOn === 'string' && isValidDate(expiresOn))) {
     throw new Error('bad expiresOn')
   }
-  return { name: trimmed, quantity, unit, expiresOn: expiresOn as string | null }
+  return { name: clean, quantity, unit, expiresOn: expiresOn as string | null }
 }
 
 /** Validates the request body. Throws when anything is malformed. */

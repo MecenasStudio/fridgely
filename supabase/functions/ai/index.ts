@@ -12,8 +12,9 @@
 // used once, and never logged, returned or stored in plaintext.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { handle } from './handler'
-import type { AiHandlerDeps, StoredKey, ClaudeCall, ClaudeResult, UsageRow } from './handler'
+// Deno (like a browser) needs the explicit extension for relative imports.
+import { handle } from './handler.ts'
+import type { AiHandlerDeps, StoredKey, ClaudeCall, ClaudeResult, UsageRow } from './handler.ts'
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_VERSION = '2023-06-01'

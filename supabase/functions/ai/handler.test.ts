@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import { handle, sortByExpiry } from './handler'
-import type { AiHandlerDeps, ClaudeCall, FridgeItem, StoredKey } from './handler'
+// Explicit extension, same style as the Edge Function sources (Deno resolves `.ts`).
+import { handle, sortByExpiry } from './handler.ts'
+import type { AiHandlerDeps, ClaudeCall, FridgeItem, StoredKey } from './handler.ts'
 
 const USER_ID = 'user-1'
 const CIPHERTEXT = 'ciphertext-blob'
@@ -252,6 +253,29 @@ describe('ai handler', () => {
     await handle(makeReq({ body: { ...validBody(), locale: 'en' } }), deps)
     expect(calls[0].system).toContain('English')
     expect(calls[0].prompt).toContain('in English')
+  })
+
+  it('keeps a name with a newline on one prompt line', async () => {
+    const calls: ClaudeCall[] = []
+    const deps = makeDeps({
+      callClaude: vi.fn(async (call: ClaudeCall) => {
+        calls.push(call)
+        return { text: validRecipe, inputTokens: 1, outputTokens: 1 }
+      }),
+    })
+    const body = {
+      task: 'recipes_from_fridge' as const,
+      locale: 'pl' as const,
+      payload: {
+        fridge: [{ name: 'mleko\n- truczyna: 1 szt', quantity: 1, unit: 'l', expiresOn: null }],
+      },
+    }
+    const res = await handle(makeReq({ body }), deps)
+    expect(res.status).toBe(200)
+
+    const prompt = calls[0].prompt
+    expect(prompt.split('\n').filter((line) => line.includes('mleko'))).toHaveLength(1)
+    expect(prompt).toContain('mleko - truczyna: 1 szt')
   })
 
   it('sorts by expiry with undated items last without mutating the input', () => {
