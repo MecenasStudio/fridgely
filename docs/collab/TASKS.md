@@ -4,6 +4,77 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ---
 
+## Paczka zadań 40–51: utwardzanie, odporność, testy, eksport danych
+
+STATUS: TODO
+Gałąź (jedna na całą paczkę): `task/40-hardening`, utwórz z aktualnego `main` (`git checkout main && git checkout -b task/40-hardening`).
+
+Kontekst: poprzednie paczki są przejrzane i scalone do `main`. W przeglądzie wyszły: regresja filtra Realtime lodówki (zła składnia, ten sam kod skopiowany w czterech hookach), niebezpieczne ponawianie "Ugotowane" po częściowym błędzie i wiersze z lokalnym id `local-N` ("local-1"), na których operacje kończą się błędem. Ta paczka to naprawa tych klas błędów i utwardzenie, nie nowe funkcje (poza eksportem danych).
+
+Zasady jak w poprzednich paczkach: jeden commit na zadanie, kolejność 40 → 51, po każdym `npm test` i `npm run build` przechodzą, osobny wpis w `REPORTS.md` na zadanie (z faktycznym wynikiem komend), błędy widoczne w UI (`role="alert"`), ładowanie i potwierdzenia w `role="status"`, teksty w `pl.json` i `en.json`, **zakaz** zmian w `supabase/`, `package.json`, `package-lock.json`, `.env*`, `docs/superpowers/`, brak nowych zależności, brak zmian poza zakresem zadania (w szczególności nie zmieniaj filtrów, zapytań ani nazw tabel poza zadaniem 40). Zadanie wymagające czegoś, czego nie ma (baza, serwer, zależność): `BLOCKED` z jednym zdaniem i dalej. Użytkownik jest nieobecny, nikt nie odpowie na pytania. Na końcu status paczki `READY FOR REVIEW` i podsumowanie na górze `REPORTS.md`.
+
+### Zadanie 40: Jedno miejsce na subskrypcję Realtime
+
+Files: nowy `src/lib/realtime.ts` + `realtime.test.ts`, hooki `useFridge.ts`, `useRecipes.ts`, `useMealPlan.ts`, `useShopping.ts` (tylko fragment subskrypcji).
+Interfejs: `subscribeToHousehold(table: 'fridge_items' | 'recipes' | 'meal_plan' | 'shopping_items', householdId: string, onChange: () => void, debounceMs = 150): () => void` (zwraca funkcję czyszczącą). Filtr budowany **tylko tu**: dokładnie `household_id=eq.${householdId}`, kanał `${table}:${householdId}`, `schema: 'public'`, `event: '*'`. Seria zdarzeń w oknie `debounceMs` woła `onChange` raz (trailing). Funkcja czyszcząca usuwa kanał i anuluje oczekujący timer. Cztery hooki używają wyłącznie tej funkcji, zachowanie widoków bez zmian. Testy (zamockowany `supabase.channel`): dokładny łańcuch filtra dla każdej z czterech tabel, debounce (5 zdarzeń, jedno wywołanie), cleanup usuwa kanał i timer, brak wywołania po cleanup.
+
+### Zadanie 41: "Ugotowane" bez podwójnego odejmowania
+
+Files: `src/features/plan/PlanPage.tsx`, `PlanView.tsx` (+ testy), `src/features/fridge/useFridge.ts` (tylko jeśli trzeba wystawić `reload`), `src/i18n/*.json`.
+Dziś `consume` to pętla zapisów; błąd w środku zostawia część odjętą, a ponowny podgląd liczy od nowego stanu. Wymagania: (a) przy błędzie zapisu natychmiast `reload` lodówki, **zamknij podgląd** (żadnego automatycznego ani jednoklikowego ponowienia) i pokaż `role="alert"` "Część zmian mogła zostać zapisana. Sprawdź lodówkę przed ponowieniem."; (b) przycisk "Ugotowane" tego dnia pozostaje wyłączony do zakończenia `reload`; (c) podgląd liczony jest z migawki `items` w chwili otwarcia i nie zmienia się, gdy Realtime odświeży listę w trakcie (po potwierdzeniu użyj migawki, ale przed zapisem sprawdź, czy ilości wierszy w świeżej liście nadal zgadzają się z migawką; jeśli nie, przerwij z komunikatem "Lodówka zmieniła się, otwórz podgląd ponownie"). Testy: błąd w połowie (reload wywołany, podgląd zamknięty, alert), zmiana lodówki w trakcie podglądu (przerwanie), poprawny przebieg.
+
+### Zadanie 42: Wiersze z lokalnym id
+
+Files: `src/features/fridge/useFridge.ts` (+ `useFridge.test.ts`).
+Wiersz dodany w tej sesji ma id `local-N` do czasu `load`. `update` i `remove` na takim id kończą się błędem zapytania. Wymaganie: gdy id zaczyna się od `local-`, najpierw wykonaj `load()`, znajdź wiersz po (znormalizowana nazwa, jednostka, data ważności) i użyj prawdziwego id; jeśli nie znaleziono, rzuć `Error('FRIDGE_ROW_NOT_SYNCED')` (UI pokazuje to jak inne błędy). Testy: update i remove na `local-1` po `load` trafiają we właściwy wiersz, brak wiersza rzuca błąd, zwykłe id nie wywołuje dodatkowego `load`.
+
+### Zadanie 43: Wspólna walidacja produktu
+
+Files: nowy `src/domain/validate.ts` + test, `src/features/fridge/FridgeItemForm.tsx`, `BarcodeAdd.tsx` (pole nazwy ręcznej), `PhotoImport.tsx` (wiersze listy), testy tych komponentów, `src/i18n/*.json`.
+Interfejs: `validateItem(input: { name: string; quantity: number; unit: string }): { ok: true; value: { name: string; quantity: number; unit: string } } | { ok: false; error: 'name' | 'quantity' | 'unit' }`. Reguły lustrzane do serwera: nazwa po `trim` i zwinięciu białych znaków 1–100 znaków, jednostka 1–20, ilość skończona, `> 0` i `<= 100000`. Formularze nie wywołują `onAdd` przy `ok: false` i pokazują komunikat przy polu (`role="alert"`). `PhotoImport`: "Dodaj wszystko" blokuje się z komunikatem, jeśli którykolwiek wiersz jest niepoprawny, i wskazuje który. Testy domenowe: granice 0/1/100/101, `NaN`, `Infinity`, ujemna, `100000`/`100001`, białe znaki.
+
+### Zadanie 44: Granica błędów aplikacji
+
+Files: nowy `src/features/common/ErrorBoundary.tsx` + test, `src/App.tsx` (opakuj zawartość zakładek), `src/i18n/*.json`.
+Klasowy komponent React z `componentDidCatch`: zamiast pustej strony pokazuje `role="alert"` "Coś poszło nie tak" z przyciskiem "Spróbuj ponownie" (reset stanu błędu i ponowny render dzieci). Nie loguj ani nie wyświetlaj treści błędu ani stosu. Zmiana zakładki też resetuje granicę (`key` zakładki). Test: dziecko rzuca, widać komunikat bez treści błędu, reset renderuje dziecko ponownie.
+
+### Zadanie 45: Brak połączenia
+
+Files: nowy `src/lib/useOnline.ts` + test, `src/App.tsx` (pasek na górze), `src/features/ai/AiPanel.tsx` (+ test), `src/i18n/*.json`.
+Hook `useOnline(): boolean` z `navigator.onLine` i zdarzeniami `online`/`offline`. Gdy offline: pasek `role="status"` "Brak połączenia. Zmiany nie zostaną zapisane." i przyciski AI (`AiPanel`) wyłączone z opisem powodu; po powrocie sieci pasek znika. Testy: zdarzenia przełączają stan, pasek, wyłączone przyciski AI.
+
+### Zadanie 46: Dostępność nawigacji
+
+Files: `src/App.tsx`, `src/styles.css` (tylko reguła `.skip-link`), `src/i18n/*.json`, `src/App.test.tsx`.
+Link "Przejdź do treści" jako pierwszy element (widoczny po fokusie), `main` z `id="content"` i `tabIndex={-1}`, aktywna zakładka z `aria-current="page"` (zachowaj `aria-pressed` tylko jeśli testy go wymagają, w przeciwnym razie zastąp), po zmianie zakładki fokus na nagłówek sekcji (`h2`) lub `main`. Testy: kolejność tabulacji (link pierwszy), `aria-current`, fokus po zmianie zakładki.
+
+### Zadanie 47: Testy własności dla logiki domenowej
+
+Files: `src/domain/properties.test.ts` (nowy; bez zmian w kodzie produkcyjnym, chyba że test ujawni błąd: opisz w raporcie i popraw minimalnie osobnym commitem).
+Bez nowych bibliotek: pętla po 500 losowych przypadkach z ziarnowym generatorem (ten z `plan.test.ts`). Własności: `buildShoppingList` nigdy nie zwraca ilości `<= 0`, jest niezależna od kolejności przepisów i lodówki, a dodanie produktu do lodówki nigdy nie zwiększa listy; `consumePlan` nigdy nie schodzi poniżej 0, suma odjętych ≤ suma wymaganych, nie zmienia wierszy innych nazw/jednostek, nie raportuje tego samego wiersza dwa razy; `findMergeTarget` jest symetryczne względem wielkości liter i spacji; `pickWeek` zwraca zawsze 7 elementów i tylko elementy z wejścia lub `null`.
+
+### Zadanie 48: Eksport danych domu
+
+Files: nowy `src/domain/export.ts` (`buildExport(data): string`, czysta, JSON z polami `version`, `exportedAt`, `recipes`, `fridge`, `shoppingList`, `plan`) + test, `src/features/settings/SettingsView.tsx` + `SettingsPage.tsx` (przycisk "Pobierz moje dane"), `src/i18n/*.json`.
+Pobranie przez `Blob` i `URL.createObjectURL` (zwolnij `revokeObjectURL`), nazwa pliku `fridgely-YYYY-MM-DD.json`. **Nigdy** nie dołączaj klucza API, jego końcówki, e-maili ani identyfikatorów użytkowników, tylko dane domu. Testy: kształt i `version`, brak pól wrażliwych (test przeszukuje serializowany JSON pod kątem `apiKey`, `last4`, `email`, `user_id`), pusta lista, polskie znaki bez uszkodzeń.
+
+### Zadanie 49: Informacja o prywatności
+
+Files: `src/features/settings/SettingsView.tsx` (sekcja), `src/i18n/*.json`, test.
+Krótka, rzeczowa sekcja w Ustawieniach (PL i EN), **tylko** to, co jest prawdą w kodzie: dane domu są w bazie Supabase i widoczne dla członków domu; klucz Claude jest przechowywany zaszyfrowany po stronie serwera i nigdy nie wraca do przeglądarki; zdjęcia są zmniejszane w przeglądarce, wysyłane przez funkcję serwerową do Anthropic z kluczem użytkownika i nie są zapisywane przez Fridgely; kody kreskowe są sprawdzane w Open Food Facts. Bez obietnic prawnych, bez słów "zgodne z RODO". Test: sekcja istnieje w obu językach i nie jest pusta.
+
+### Zadanie 50: Stałe w jednym miejscu
+
+Files: nowy `src/domain/limits.ts` (`MAX_NAME_LENGTH = 100`, `MAX_UNIT_LENGTH = 20`, `MAX_QUANTITY = 100000`, `MAX_PHOTO_ITEMS = 50`, `SOON_DAYS = 3`) + test, użycie w `validate.ts` (43), `src/domain/fridge.ts` (`SOON_DAYS`) i w komentarzach wskazujących na serwer.
+Tylko przeniesienie stałych i podmiana odwołań, bez zmiany zachowania. Test pilnuje wartości (zmiana wymaga świadomej zmiany testu) i że `expiryStatus` nadal zwraca `soon` dla 3 dni, a `ok` dla 4.
+
+### Zadanie 51: CHANGELOG i dokumentacja
+
+Files: nowy `CHANGELOG.md` (po polsku, sekcje Dodano/Zmieniono/Naprawiono, wersja `0.1.0` z datą dnia wykonania, wypunktowane funkcje z paczek 1–51 w skrócie), `docs/ARCHITECTURE.md` (uzupełnij o `realtime.ts`, `validate.ts`, `limits.ts`, `ErrorBoundary`, zasadę "jedno miejsce na filtr i na stałe"), `README.md` (sekcja o eksporcie i prywatności).
+Bez sekretów i prawdziwych adresów projektu. Na końcu `npm test`, `npm run build`, status paczki `READY FOR REVIEW`.
+
+---
+
 ## Paczka zadań 18–24: zdjęcia (AI vision), scalanie produktów, PWA, reset hasła
 
 STATUS: DONE (przegląd: ACCEPTED z uwagami, poprawki 18–24 zweryfikowane, zadania 26–39 przyjęte)
