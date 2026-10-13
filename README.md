@@ -16,13 +16,14 @@ Wspólna (dla 1–2 osób) aplikacja webowa, która zastępuje improwizację i m
 
 ### Funkcje
 
-- **Lodówka**: dodawanie ręczne, kodem kreskowym (Open Food Facts) lub ze zdjęcia, edycja ilości i daty ważności, sortowanie od najbliższej daty, produkty bez daty na końcu z prośbą o uzupełnienie.
-- **Przepisy**: własna lista, kroki ukryte w „Pokaż kroki”, usuwanie z potwierdzeniem.
-- **Plan tygodnia**: losowanie z istniejących przepisów z możliwością powtórzenia, ręczne przypisywanie (przeciąganie).
-- **Lista zakupów**: generowana z planu i pomniejszona o lodówkę, odhaczanie w sklepie, „Przenieś kupione do lodówki”.
-- **AI (BYOK)**: „Przepis z lodówki” i „Obiad z tego, co się przeterminuje” (tylko po kliknięciu) oraz dodanie braków z przepisu do listy zakupów. Każdy użytkownik używa własnego klucza Claude.
-- **Ustawienia**: zapis/usuń własny klucz Claude (widać tylko końcówkę), przełącznik języka PL/EN.
-- **Dom**: jedna wspólna przestrzeń z kodem zaproszenia, zmiany widoczne na żywo u obu osób.
+- **Lodówka**: dodawanie ręczne, kodem kreskowym (Open Food Facts) lub ze zdjęcia (lista rozpoznanych produktów jest edytowalna, nic nie trafia do lodówki bez zatwierdzenia), odczyt daty ważności z etykiety na zdjęciu, edycja ilości i daty, szukanie po nazwie, sortowanie od najbliższej daty, produkty bez daty na końcu z prośbą o uzupełnienie. Ten sam produkt (nazwa, jednostka, data) dopisuje się do istniejącego wiersza, a nie tworzy duplikatu.
+- **Przepisy**: własna lista, kroki ukryte w „Pokaż kroki”, edycja, usuwanie z potwierdzeniem, szukanie po tytule (bez rozróżniania wielkości liter i polskich znaków) oraz filtr „Tylko to, co mogę ugotować teraz” na podstawie lodówki.
+- **Plan tygodnia**: losowanie z istniejących przepisów, ręczne przypisywanie (przeciąganie), przechodzenie między tygodniami, informacja „Wszystko jest” albo „Brakuje: N” przy każdym dniu oraz „Ugotowane” — podgląd, co zniknie z lodówki, i zatwierdzenie, które odejmuje składniki (od najbliższej daty).
+- **Lista zakupów**: generowana z planu i pomniejszona o lodówkę, ręczne dodawanie i usuwanie pozycji, odhaczanie w sklepie (odhaczone schodzą na dół), „Wyczyść odhaczone”, „Przenieś kupione do lodówki” i kopiowanie/udostępnianie listy jako tekst.
+- **AI (BYOK)**: „Przepis z lodówki” i „Obiad z tego, co się przeterminuje” (tylko po kliknięciu), rozpoznawanie zdjęcia lodówki i odczyt daty z etykiety oraz dodanie braków z przepisu do listy zakupów. Każdy użytkownik używa własnego klucza Claude.
+- **Ustawienia**: zapis/usuń własny klucz Claude (widać tylko końcówkę), przełącznik języka PL/EN, motyw (jasny, ciemny, systemowy), dane domu z kodem zaproszenia do skopiowania i liczbą osób.
+- **Konto i dom**: logowanie e-mailem z hasłem, magic link, reset hasła linkiem, jedna wspólna przestrzeń z kodem zaproszenia i zmianami widocznymi na żywo u obu osób.
+- **Na telefonie**: aplikację można dodać do ekranu głównego (manifest PWA); bez trybu offline.
 
 ### Stack
 
@@ -102,13 +103,14 @@ A shared web app (for 1–2 people) that replaces improvising and wasting food: 
 
 ### Features
 
-- **Fridge**: add items by hand, by barcode (Open Food Facts) or from a photo, edit quantity and expiry date, sorted by the nearest date, undated products last with a prompt to fill the date in.
-- **Recipes**: your own list, steps tucked into "Show steps", delete behind a confirmation.
-- **Week plan**: randomize from existing recipes with a re-roll, or assign by hand (drag and drop).
-- **Shopping list**: built from the plan and reduced by the fridge, tick items off in the shop, "Move bought items to the fridge".
-- **AI (BYOK)**: "Recipe from my fridge" and "Dinner from what expires next" (on click only), plus sending the recipe's missing items to the shopping list. Every user brings their own Claude key.
-- **Settings**: save/remove your own Claude key (only the last characters are shown), PL/EN language switch.
-- **Household**: one shared space with an invite code, changes visible to both people live.
+- **Fridge**: add items by hand, by barcode (Open Food Facts) or from a photo (the recognised products appear in an editable list and nothing is saved until you confirm), read an expiry date off a label in a photo, edit quantity and date, search by name, sorted by the nearest date, undated products last with a prompt to fill the date in. The same product (name, unit, date) tops up the existing row instead of creating a duplicate.
+- **Recipes**: your own list, steps tucked into "Show steps", edit, delete behind a confirmation, search by title (case- and diacritic-insensitive) and a "Only what I can cook now" filter driven by the fridge.
+- **Week plan**: randomize from existing recipes, assign by hand (drag and drop), move between weeks, "Everything is in" or "Missing: N" for each day, and "Cooked" — a preview of what will leave the fridge, then a confirmation that subtracts the ingredients (soonest expiry first).
+- **Shopping list**: built from the plan and reduced by the fridge, add and remove items by hand, tick them off in the shop (checked items sink to the bottom), "Clear checked", "Move bought items to the fridge" and copy/share the list as text.
+- **AI (BYOK)**: "Recipe from my fridge" and "Dinner from what expires next" (on click only), fridge-photo recognition, label-date reading, plus sending the recipe's missing items to the shopping list. Every user brings their own Claude key.
+- **Settings**: save/remove your own Claude key (only the last characters are shown), PL/EN language switch, theme (light, dark, system) and the household details with a copyable invite code and the number of people.
+- **Account and household**: e-mail and password sign-in, magic link, password reset by e-mail, one shared space with an invite code and live updates for both people.
+- **On a phone**: the app can be added to the home screen (PWA manifest); no offline mode.
 
 ### Stack
 
