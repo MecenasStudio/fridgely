@@ -36,3 +36,18 @@ export function purchasedToFridge(items: PurchasedItem[]): NewFridgeRow[] {
     .filter((i) => i.checked)
     .map((i) => ({ name: normalizeName(i.name), quantity: i.quantity, unit: i.unit, expiresOn: null }))
 }
+
+/**
+ * The shopping list as plain text, one "- qty unit name" line per item, ready to paste into
+ * a message. Checked-off items are left out: they are already in the trolley.
+ *
+ * `locale` is part of the signature because the caller has it, but a line of a shopping list
+ * is the same in every language (numbers and units are written by the user).
+ */
+export function formatShoppingList(items: PurchasedItem[], locale?: string): string {
+  void locale
+  return items
+    .filter((i) => !i.checked)
+    .map((i) => `- ${i.quantity} ${i.unit} ${i.name}`)
+    .join('\n')
+}

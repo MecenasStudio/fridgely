@@ -181,3 +181,65 @@ describe('ShoppingView editing the list', () => {
     expect(screen.queryByText('delete denied')).toBeNull()
   })
 })
+
+describe('ShoppingView sharing the list', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    Reflect.deleteProperty(navigator, 'clipboard')
+    Reflect.deleteProperty(navigator, 'share')
+  })
+
+  it('shares through the share sheet when the browser has one', async () => {
+    const share = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    renderView([item('a', 'milk'), item('b', 'bread', true)])
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the list' }))
+
+    await waitFor(() => expect(share).toHaveBeenCalled())
+    expect(share).toHaveBeenCalledWith({ title: 'Shopping', text: '- 1 l milk' })
+    // The clipboard is the fallback, not the first choice.
+    expect(writeText).not.toHaveBeenCalled()
+    expect(await screen.findByText('List copied.')).toBeTruthy()
+  })
+
+  it('falls back to the clipboard', async () => {
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    renderView([item('a', 'milk', true), item('b', 'bread')])
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the list' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('- 1 l bread'))
+    expect(await screen.findByText('List copied.')).toBeTruthy()
+  })
+
+  it('alerts when neither way exists', async () => {
+    renderView([item('a', 'milk')])
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the list' }))
+
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Could not copy the list. Select the items and copy them by hand.',
+    )
+    expect(screen.queryByText('List copied.')).toBeNull()
+  })
+
+  it('alerts when the share sheet is dismissed and disables the button with nothing to buy', async () => {
+    const share = vi.fn(async () => {
+      throw new Error('cancelled')
+    })
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+    renderView([item('a', 'milk')])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the list' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+
+    // Everything is already checked off: there is nothing left to send.
+    renderView([item('a', 'milk', true)])
+    const buttons = screen.getAllByRole('button', { name: 'Copy the list' })
+    expect(buttons[buttons.length - 1]).toHaveProperty('disabled', true)
+  })
+})

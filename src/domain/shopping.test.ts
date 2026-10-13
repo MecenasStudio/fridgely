@@ -1,4 +1,4 @@
-import { buildShoppingList, purchasedToFridge } from './shopping'
+import { buildShoppingList, formatShoppingList, purchasedToFridge } from './shopping'
 import type { FridgeItem, Recipe } from './types'
 
 const recipe = (id: string, ingredients: Recipe['ingredients']): Recipe => ({
@@ -57,5 +57,24 @@ describe('purchasedToFridge', () => {
   it('returns an empty list when nothing is checked', () => {
     expect(purchasedToFridge([{ name: 'Chleb', quantity: 1, unit: 'szt', checked: false }])).toEqual([])
     expect(purchasedToFridge([])).toEqual([])
+  })
+})
+
+describe('formatShoppingList', () => {
+  const row = (name: string, quantity: number, unit: string, checked = false) => ({ name, quantity, unit, checked })
+
+  it('writes one line per item that is still to buy', () => {
+    expect(formatShoppingList([row('mleko', 2, 'l'), row('chleb', 1, 'szt')])).toBe('- 2 l mleko\n- 1 szt chleb')
+  })
+
+  it('leaves out the checked items', () => {
+    expect(formatShoppingList([row('mleko', 2, 'l', true), row('chleb', 1, 'szt')])).toBe('- 1 szt chleb')
+    expect(formatShoppingList([row('mleko', 2, 'l', true)])).toBe('')
+  })
+
+  it('is empty for an empty list and accepts a locale without changing the format', () => {
+    expect(formatShoppingList([])).toBe('')
+    expect(formatShoppingList([row('mleko', 0.5, 'l')], 'en')).toBe('- 0.5 l mleko')
+    expect(formatShoppingList([row('mleko', 0.5, 'l')], 'pl')).toBe('- 0.5 l mleko')
   })
 })

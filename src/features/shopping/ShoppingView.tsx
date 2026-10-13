@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatShoppingList } from '../../domain/shopping'
 import type { Ingredient } from '../../domain/types'
 import { LoadError } from '../common/LoadError'
 
@@ -39,13 +40,15 @@ export function ShoppingView({
   error = false,
   onReload,
 }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [unit, setUnit] = useState('szt')
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
   const [moved, setMoved] = useState(false)
+  const [shared, setShared] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
 
   const checkedCount = items.filter((i) => i.checked).length
   const sorted = uncheckedFirst(items)
@@ -87,6 +90,30 @@ export function ShoppingView({
     )
   }
 
+  /**
+   * Shares the list when the browser can (a phone's share sheet), otherwise copies it to the
+   * clipboard. When neither exists, that is reported — not silently ignored.
+   */
+  async function copyList() {
+    if (busy) return
+    setShared(false)
+    setCopyFailed(false)
+    const text = formatShoppingList(items, i18n.resolvedLanguage)
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({ title: t('nav.shopping'), text })
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        throw new Error('no share or clipboard')
+      }
+      setShared(true)
+    } catch {
+      // A cancelled share sheet lands here too; the list itself is untouched either way.
+      setCopyFailed(true)
+    }
+  }
+
   return (
     <section>
       <h2>{t('nav.shopping')}</h2>
@@ -113,6 +140,9 @@ export function ShoppingView({
       <button type="button" disabled={busy} onClick={() => void run(onGenerate)}>
         {t('shopping.generate')}
       </button>{' '}
+      <button type="button" disabled={busy || items.every((i) => i.checked)} onClick={() => void copyList()}>
+        {t('shopping.copyList')}
+      </button>{' '}
       {checkedCount > 0 && (
         <>
           <button type="button" disabled={busy} onClick={() => void run(onClearChecked)}>
@@ -129,6 +159,8 @@ export function ShoppingView({
       )}
 
       {moved && <p role="status">{t('shopping.moved')}</p>}
+      {shared && <p role="status">{t('shopping.copied')}</p>}
+      {copyFailed && <p role="alert">{t('shopping.copyFailed')}</p>}
       {failed && <p role="alert">{failed}</p>}
 
       {items.length === 0 ? (
