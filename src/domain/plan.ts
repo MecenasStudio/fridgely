@@ -21,6 +21,12 @@ export function weekDays(start: string): string[] {
   )
 }
 
+/** Moves an ISO date by `days` (normally ±7), crossing month and year ends. */
+export function shiftWeek(start: string, days: number): string {
+  const [y, m, d] = start.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+}
+
 // Recipes using the soonest-expiring fridge items come first, the rest is shuffled.
 export function pickWeek(
   recipes: Recipe[],

@@ -95,6 +95,9 @@
                 },
     "plan":  {
                  "randomize":  "Randomize week",
+                 "previousWeek":  "Previous week",
+                 "thisWeek":  "This week",
+                 "nextWeek":  "Next week",
                  "none":  "— none —",
                  "noRecipes":  "Add some recipes first.",
                  "allInFridge":  "Everything is in",

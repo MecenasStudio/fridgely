@@ -95,6 +95,9 @@
                 },
     "plan":  {
                  "randomize":  "Losuj tydzień",
+                 "previousWeek":  "Poprzedni tydzień",
+                 "thisWeek":  "Ten tydzień",
+                 "nextWeek":  "Następny tydzień",
                  "none":  "— brak —",
                  "noRecipes":  "Najpierw dodaj przepisy.",
                  "allInFridge":  "Wszystko jest",

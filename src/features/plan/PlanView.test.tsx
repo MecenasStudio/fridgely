@@ -88,3 +88,55 @@ describe('PlanView availability', () => {
     expect(screen.getByText('Missing: 2 ingredients')).toBeTruthy()
   })
 })
+
+describe('PlanView week navigation', () => {
+  it('shifts back and forward and returns to this week', () => {
+    const onShiftWeek = vi.fn()
+    const onThisWeek = vi.fn()
+    render(
+      <PlanView
+        days={days}
+        recipes={recipes}
+        plan={{}}
+        weekLabel="Oct 12 – Oct 18, 2026"
+        isCurrentWeek={false}
+        onShiftWeek={onShiftWeek}
+        onThisWeek={onThisWeek}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    expect(screen.getByText('Oct 12 – Oct 18, 2026')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous week' }))
+    expect(onShiftWeek).toHaveBeenCalledWith(-1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next week' }))
+    expect(onShiftWeek).toHaveBeenCalledWith(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'This week' }))
+    expect(onThisWeek).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables "this week" while the current week is shown and hides the bar without handlers', () => {
+    const { unmount } = render(
+      <PlanView
+        days={days}
+        recipes={recipes}
+        plan={{}}
+        weekLabel="Oct 12 – Oct 18, 2026"
+        isCurrentWeek
+        onShiftWeek={() => {}}
+        onThisWeek={() => {}}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+    expect((screen.getByRole('button', { name: 'This week' }) as HTMLButtonElement).disabled).toBe(true)
+    unmount()
+
+    render(<PlanView days={days} recipes={recipes} plan={{}} onSet={async () => {}} onRandomize={async () => {}} />)
+    expect(screen.queryByRole('button', { name: 'Previous week' })).toBeNull()
+  })
+})

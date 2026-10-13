@@ -8,6 +8,12 @@ type Props = {
   recipes: Recipe[]
   plan: Record<string, string | null>
   fridge?: FridgeItem[]
+  /** Week range, already formatted in the interface language. */
+  weekLabel?: string
+  isCurrentWeek?: boolean
+  /** `weeks` is -1 for the previous week and 1 for the next one. */
+  onShiftWeek?: (weeks: number) => void
+  onThisWeek?: () => void
   onSet: (day: string, recipeId: string | null) => Promise<void>
   onRandomize: () => Promise<void>
 }
@@ -31,7 +37,18 @@ function DayCell({ day, children }: { day: string; children: React.ReactNode }) 
   )
 }
 
-export function PlanView({ days, recipes, plan, fridge = [], onSet, onRandomize }: Props) {
+export function PlanView({
+  days,
+  recipes,
+  plan,
+  fridge = [],
+  weekLabel,
+  isCurrentWeek = false,
+  onShiftWeek,
+  onThisWeek,
+  onSet,
+  onRandomize,
+}: Props) {
   const { t, i18n } = useTranslation()
   const fmt = new Intl.DateTimeFormat(i18n.language, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
@@ -42,6 +59,20 @@ export function PlanView({ days, recipes, plan, fridge = [], onSet, onRandomize 
   return (
     <section>
       <h2>{t('nav.plan')}</h2>
+      {onShiftWeek && (
+        <p>
+          <button type="button" onClick={() => onShiftWeek(-1)}>
+            {t('plan.previousWeek')}
+          </button>{' '}
+          <button type="button" disabled={isCurrentWeek} onClick={() => onThisWeek?.()}>
+            {t('plan.thisWeek')}
+          </button>{' '}
+          <button type="button" onClick={() => onShiftWeek(1)}>
+            {t('plan.nextWeek')}
+          </button>{' '}
+          {weekLabel && <p role="status">{weekLabel}</p>}
+        </p>
+      )}
       <button type="button" disabled={recipes.length === 0} onClick={() => onRandomize()}>
         {t('plan.randomize')}
       </button>
