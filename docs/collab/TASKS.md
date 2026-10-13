@@ -6,7 +6,18 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Paczka zadań 18–24: zdjęcia (AI vision), scalanie produktów, PWA, reset hasła
 
-STATUS: READY FOR REVIEW (zadania 18–24 wykonane, patrz raporty 18–24 w `REPORTS.md`)
+STATUS: TODO (tylko 2 poprawki z przeglądu, poniżej; reszta paczki zaakceptowana)
+
+### Przegląd Claude: paczka 18–24 (poprawki: 1 z 2 dozwolonych)
+
+REVIEW: CHANGES REQUESTED, na tej samej gałęzi `task/18-24-photo`
+
+Sprawdzone przeze mnie: `npm test` 188/188, `npm run build` OK, zakres plików zgodny (zmieniony tylko `supabase/functions/ai/*`, bez `_shared`, `migrations`, `save-key`), brak nowych zależności i sekretów, serwer (walidacja obrazu, naprawa pól, brak zgadywania dat, `502` przy złym JSON, obraz i klucz nie wyciekają) przyjęty, zadania 20, 23 i 24 przyjęte. Dwie poprawki, obie w kodzie dodanym w tej paczce:
+
+1. **Błąd w `src/features/fridge/PhotoImport.tsx:104`** (zgubiony znak nowej linii): `if (!file || !dateTarget || readBusy) return    setReadBusy(true)` jest czytane jako `return setReadBusy(true)`. Skutek: przy wczesnym wyjściu `readBusy` zostaje ustawione na `true` i nic go nie zeruje (odczyt dat przestaje działać do przeładowania), a w normalnej ścieżce `readBusy` nigdy nie jest `true` w trakcie odczytu (brak komunikatu "Odczytuję datę", możliwe podwójne wysłanie). Napraw: wczesne `return` w osobnej linii, bez wywołania `setReadBusy`, a `setReadBusy(true)` na początku normalnej ścieżki. Dodaj test: (a) podczas oczekującego `readDate` widać `role="status"` z komunikatem odczytu i drugi wybór pliku nie woła `readDate` ponownie; (b) wybór pliku `undefined` nie blokuje kolejnego odczytu. Przejrzyj plik pod kątem innych sklejonych linii.
+2. **Utrata ilości przy scalaniu w `src/features/fridge/useFridge.ts` (`add`)**: `findMergeTarget(items, item)` czyta `items` z domknięcia renderu, a `PhotoImport.addAll` i przenoszenie kupionych z listy zakupów wołają `add` w pętli. Kolejne wywołania widzą tę samą, nieodświeżoną listę, więc (a) dwa identyczne produkty w jednej paczce wstawiają dwa wiersze zamiast jednego, (b) dwa dopiski do istniejącego wiersza obliczają `target.quantity + item.quantity` od tej samej starej wartości i drugi nadpisuje pierwszy (np. 1 + 2 + 2 daje 3 zamiast 5). Napraw: trzymaj aktualną listę w `useRef` (aktualizowaną przy każdym `add` i przy każdym `load`) i licz scalenie na niej, żeby kolejne wywołania w jednej pętli widziały skutki poprzednich. Wyścig między dwiema osobami z domu zostaw (zaakceptowane na tym etapie), opisz go w komentarzu przy `add`. Dodaj test hooka (z zamockowanym `supabase`): trzy kolejne `add` tego samego produktu (1, 2, 2) dają jedno `update` z końcową ilością 5 albo jedno `insert` plus dwa `update` kończące na 5, nigdy dwa wiersze ani 3.
+
+Po poprawkach: `npm test` i `npm run build`, dopisz raport 25 w `REPORTS.md` i ustaw status na `READY FOR REVIEW`.
 Gałąź (jedna na całą paczkę): `task/18-24-photo`, utworzona z `main` (commity `a89896c`, `8cb10e1`, `df2afd6`, `f2eef1d`, `c631ebf`, `e8df326`, `c25a076`)
 
 Zasady paczki jak w poprzednich (jeden commit na zadanie, kolejność 18 → 24, `npm test` i `npm run build` po każdym, osobny wpis w `REPORTS.md` na zadanie, zatrzymaj się po 24 albo na `BLOCKER`, błędy widoczne w UI przez `role="alert"`, brak nowych zależności, brak surowych komunikatów serwera). Wyjątek od reguły "nie ruszaj `supabase/`": zadania 18 i 19 edytują **wyłącznie** `supabase/functions/ai/*` (nie `_shared`, nie `migrations`, nie `save-key`). Wdrożenie funkcji robi Claude po przeglądzie, nie wdrażaj.
