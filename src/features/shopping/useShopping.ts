@@ -56,7 +56,15 @@ export function useShopping(householdId: string) {
     if (ids.length === 0) return
     const del = await supabase.from('shopping_items').delete().in('id', ids)
     if (del.error) throw del.error
+    setItems((current) => current.filter((item) => !ids.includes(item.id)))
   }
 
-  return { items, toggle, replaceAll, addMany, deleteByIds }
+  /** One row: the "remove" button on a hand-written list must not need a reload to show. */
+  const remove = async (id: string) => {
+    const del = await supabase.from('shopping_items').delete().eq('id', id)
+    if (del.error) throw del.error
+    setItems((current) => current.filter((item) => item.id !== id))
+  }
+
+  return { items, toggle, replaceAll, addMany, deleteByIds, remove }
 }

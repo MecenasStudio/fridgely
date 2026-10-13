@@ -100,6 +100,13 @@
     "shopping":  {
                      "generate":  "Utwórz listę z planu",
                      "empty":  "Nic do kupienia.",
+                     "name":  "Nazwa",
+                     "quantity":  "Ilość",
+                     "unit":  "Jednostka",
+                     "add":  "Dodaj",
+                     "remove":  "Usuń",
+                     "clearChecked":  "Wyczyść odhaczone",
+                     "operationFailed":  "Nie udało się zapisać zmiany na liście. Spróbuj ponownie.",
                      "moveChecked":  "Przenieś kupione do lodówki",
                      "moved":  "Kupione produkty są w lodówce.",
                      "moveFailed":  "Nie udało się przenieść kupionych produktów. Lista została bez zmian."
