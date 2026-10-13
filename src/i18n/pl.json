@@ -8,6 +8,7 @@
                 "recipes":  "Przepisy",
                 "plan":  "Plan",
                 "shopping":  "Zakupy",
+                "ai":  "AI",
                 "settings":  "Ustawienia"
             },
     "auth":  {
@@ -19,7 +20,8 @@
                  "magicLink":  "Wyślij link logowania",
                  "switchToSignUp":  "Nie mam konta",
                  "switchToSignIn":  "Mam już konto",
-                 "checkEmail":  "Sprawdź skrzynkę e-mail."
+                 "checkEmail":  "Sprawdź skrzynkę e-mail.",
+                 "failed":  "Nie udało się zalogować. Sprawdź e-mail i hasło."
              },
     "household":  {
                       "title":  "Twój dom",

@@ -8,6 +8,7 @@
                 "recipes":  "Recipes",
                 "plan":  "Plan",
                 "shopping":  "Shopping",
+                "ai":  "AI",
                 "settings":  "Settings"
             },
     "auth":  {
@@ -19,7 +20,8 @@
                  "magicLink":  "Email me a sign-in link",
                  "switchToSignUp":  "I need an account",
                  "switchToSignIn":  "I already have an account",
-                 "checkEmail":  "Check your inbox."
+                 "checkEmail":  "Check your inbox.",
+                 "failed":  "Could not sign you in. Check your e-mail and password."
              },
     "household":  {
                       "title":  "Your household",
