@@ -150,4 +150,19 @@ describe('FridgeView', () => {
     expect(screen.getByText('Your fridge is empty.')).toBeTruthy()
     expect(screen.queryByLabelText('Search the fridge')).toBeNull()
   })
+
+  it('shows a loading state instead of the empty state while the first load runs', () => {
+    render(<FridgeView items={[]} today="2026-10-12" loading onAdd={noop} onUpdate={noop} onRemove={noop} />)
+
+    expect(screen.getByRole('status').textContent).toBe('Loading…')
+    // The empty-state text must not flash before the data arrives.
+    expect(screen.queryByText('Your fridge is empty.')).toBeNull()
+    expect(screen.queryByLabelText('Search the fridge')).toBeNull()
+  })
+
+  it('shows the data instead of the loading state once it is loaded', () => {
+    render(<FridgeView items={[item('a', 'Milk', '2026-10-10')]} today="2026-10-12" loading={false} onAdd={noop} onUpdate={noop} onRemove={noop} />)
+    expect(screen.queryByText('Loading…')).toBeNull()
+    expect(screen.getByTestId('name').textContent).toBe('Milk')
+  })
 })

@@ -18,6 +18,8 @@ type Props = {
   onThisWeek?: () => void
   /** Writes the outcome of a cooked meal; the preview is shown before this is called. */
   onConsume?: (change: ConsumeResult) => Promise<void>
+  /** True until the first load settles: shows "Loading…" instead of empty days. */
+  loading?: boolean
   onSet: (day: string, recipeId: string | null) => Promise<void>
   onRandomize: () => Promise<void>
 }
@@ -25,7 +27,8 @@ type Props = {
 /** Amount the preview will take out of a row, rounded like the domain does. */
 const round1 = (n: number) => Math.round(n * 1000) / 1000
 
-function RecipeChip({ recipe }: { recipe: Recipe }) {  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: recipe.id })
+function RecipeChip({ recipe }: { recipe: Recipe }) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: recipe.id })
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined
   return (
     <span ref={setNodeRef} style={style} {...listeners} {...attributes} role="presentation">
@@ -53,6 +56,7 @@ export function PlanView({
   onShiftWeek,
   onThisWeek,
   onConsume,
+  loading = false,
   onSet,
   onRandomize,
 }: Props) {
@@ -80,6 +84,15 @@ export function PlanView({
     } finally {
       setConsuming(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <section>
+        <h2>{t('nav.plan')}</h2>
+        <p role="status">{t('common.loading')}</p>
+      </section>
+    )
   }
 
   return (

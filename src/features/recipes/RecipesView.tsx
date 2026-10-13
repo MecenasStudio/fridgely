@@ -12,6 +12,8 @@ type Props = {
   onAdd: (r: Omit<Recipe, 'id'>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onUpdate: (id: string, patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => Promise<void>
+  /** True until the first load settles: shows "Loading…" instead of the empty state. */
+  loading?: boolean
 }
 
 /**
@@ -140,7 +142,7 @@ function EditRecipeForm({
   )
 }
 
-export function RecipesView({ recipes, fridge = [], onAdd, onDelete, onUpdate }: Props) {
+export function RecipesView({ recipes, fridge = [], onAdd, onDelete, onUpdate, loading = false }: Props) {
   const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [ingredients, setIngredients] = useState('')
@@ -171,6 +173,15 @@ export function RecipesView({ recipes, fridge = [], onAdd, onDelete, onUpdate }:
     } catch {
       setAddFailed(true)
     }
+  }
+
+  if (loading) {
+    return (
+      <section>
+        <h2>{t('nav.recipes')}</h2>
+        <p role="status">{t('common.loading')}</p>
+      </section>
+    )
   }
 
   return (

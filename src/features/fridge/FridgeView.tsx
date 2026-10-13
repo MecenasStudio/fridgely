@@ -18,6 +18,8 @@ type Props = {
   locale?: 'pl' | 'en'
   recognize?: Recognize
   readDate?: ReadDate
+  /** True until the first load settles: shows "Loading…" instead of the empty state. */
+  loading?: boolean
 }
 
 type Update = (id: string, patch: Partial<NewFridgeItem>) => Promise<void>
@@ -74,13 +76,22 @@ function ExpiryInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update })
   )
 }
 
-export function FridgeView({ items, today, onAdd, onUpdate, onRemove, locale = 'en', recognize, readDate }: Props) {
+export function FridgeView({ items, today, onAdd, onUpdate, onRemove, locale = 'en', recognize, readDate, loading = false }: Props) {
   const { t } = useTranslation()
   const sorted = sortByExpiry(items)
   const [failedId, setFailedId] = useState<string | null>(null)
   const [dateTarget, setDateTarget] = useState<{ id: string; name: string } | null>(null)
   const [query, setQuery] = useState('')
   const visible = sorted.filter((item) => matchesQuery(item.name, query))
+
+  if (loading) {
+    return (
+      <section>
+        <h2>{t('nav.fridge')}</h2>
+        <p role="status">{t('common.loading')}</p>
+      </section>
+    )
+  }
 
   // Every write goes through here, so a failed update always shows up on that row.
   async function update(id: string, patch: Partial<NewFridgeItem>) {

@@ -5,6 +5,8 @@ import type { ShoppingItem } from './ShoppingView'
 
 export function useShopping(householdId: string) {
   const [items, setItems] = useState<ShoppingItem[]>([])
+  // True until the first load settles, so the view does not flash "nothing to buy".
+  const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -13,6 +15,7 @@ export function useShopping(householdId: string) {
       .eq('household_id', householdId)
       .order('created_at')
     setItems(((data ?? []) as ShoppingItem[]).map((i) => ({ ...i, quantity: Number(i.quantity) })))
+    setLoading(false)
   }, [householdId])
 
   useEffect(() => {
@@ -66,5 +69,5 @@ export function useShopping(householdId: string) {
     setItems((current) => current.filter((item) => item.id !== id))
   }
 
-  return { items, toggle, replaceAll, addMany, deleteByIds, remove }
+  return { items, loading, toggle, replaceAll, addMany, deleteByIds, remove }
 }

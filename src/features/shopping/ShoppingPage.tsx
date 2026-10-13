@@ -12,7 +12,7 @@ export function ShoppingPage({ householdId }: { householdId: string }) {
   const { recipes } = useRecipes(householdId)
   const { items: fridge, add: addToFridge } = useFridge(householdId)
   const { plan } = useMealPlan(householdId, days)
-  const { items, toggle, replaceAll, addMany, deleteByIds, remove } = useShopping(householdId)
+  const { items, toggle, replaceAll, addMany, deleteByIds, remove, loading } = useShopping(householdId)
 
   const generate = async () => {
     const ids = new Set(days.map((d) => plan[d]).filter(Boolean))
@@ -40,6 +40,7 @@ export function ShoppingPage({ householdId }: { householdId: string }) {
       onRemove={remove}
       onClearChecked={async () => deleteByIds(items.filter((i) => i.checked).map((i) => i.id))}
       onMoveChecked={moveChecked}
+      loading={loading}
     />
   )
 }

@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 
 export function useMealPlan(householdId: string, days: string[]) {
   const [plan, setPlan] = useState<Record<string, string | null>>({})
+  // True until the first load settles, so the view does not flash empty days.
+  const [loading, setLoading] = useState(true)
   const first = days[0]
   const last = days[days.length - 1]
 
@@ -14,6 +16,7 @@ export function useMealPlan(householdId: string, days: string[]) {
       .gte('day', first)
       .lte('day', last)
     setPlan(Object.fromEntries((data ?? []).map((r) => [r.day as string, r.recipe_id as string | null])))
+    setLoading(false)
   }, [householdId, first, last])
 
   useEffect(() => {
@@ -44,5 +47,5 @@ export function useMealPlan(householdId: string, days: string[]) {
     if (error) throw error
   }
 
-  return { plan, set, setMany }
+  return { plan, loading, set, setMany }
 }

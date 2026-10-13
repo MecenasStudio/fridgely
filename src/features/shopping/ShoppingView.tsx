@@ -13,6 +13,8 @@ type Props = {
   onClearChecked: () => Promise<void>
   /** Moves the checked rows into the fridge; only shown when something is checked. */
   onMoveChecked(): Promise<void>
+  /** True until the first load settles: shows "Loading…" instead of the empty state. */
+  loading?: boolean
 }
 
 /** Checked rows sink to the bottom; within each group the original order is kept. */
@@ -28,6 +30,7 @@ export function ShoppingView({
   onRemove,
   onClearChecked,
   onMoveChecked,
+  loading = false,
 }: Props) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
@@ -66,6 +69,15 @@ export function ShoppingView({
       setName('')
       setQuantity('1')
     })
+  }
+
+  if (loading) {
+    return (
+      <section>
+        <h2>{t('nav.shopping')}</h2>
+        <p role="status">{t('common.loading')}</p>
+      </section>
+    )
   }
 
   return (

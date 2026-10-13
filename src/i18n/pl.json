@@ -3,6 +3,9 @@
                 "name":  "Fridgely",
                 "tagline":  "Planuj posiłki. Nie marnuj jedzenia."
             },
+    "common":  {
+                   "loading":  "Ładowanie…"
+               },
     "nav":  {
                 "fridge":  "Lodówka",
                 "recipes":  "Przepisy",

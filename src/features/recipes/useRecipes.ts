@@ -6,6 +6,8 @@ type Row = { id: string; title: string; ingredients: Ingredient[]; steps: string
 
 export function useRecipes(householdId: string) {
   const [recipes, setRecipes] = useState<Recipe[]>([])
+  // True until the first load settles, so the view does not flash its empty state.
+  const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -14,6 +16,7 @@ export function useRecipes(householdId: string) {
       .eq('household_id', householdId)
       .order('created_at')
     setRecipes((data as Row[] | null) ?? [])
+    setLoading(false)
   }, [householdId])
 
   useEffect(() => {
@@ -48,5 +51,5 @@ export function useRecipes(householdId: string) {
     )
   }
 
-  return { recipes, add, del, update }
+  return { recipes, loading, add, del, update }
 }

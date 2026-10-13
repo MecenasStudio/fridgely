@@ -3,6 +3,9 @@
                 "name":  "Fridgely",
                 "tagline":  "Plan meals. Waste less food."
             },
+    "common":  {
+                   "loading":  "Loading…"
+               },
     "nav":  {
                 "fridge":  "Fridge",
                 "recipes":  "Recipes",
