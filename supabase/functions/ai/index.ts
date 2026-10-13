@@ -2,7 +2,7 @@
 // global, none of which the browser build's `tsc --noEmit` can resolve. The logic that
 // matters is covered by handler.test.ts / prompts.ts, which are type-checked.
 //
-// Edge Function `ai` — the only server-side entry point to Claude (BYOK).
+// Edge Function `ai` - the only server-side entry point to Claude (BYOK).
 //
 // Deploy with: `supabase functions deploy ai` (Claude does this after review).
 // Required secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, KEY_ENCRYPTION_SECRET.
@@ -13,6 +13,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 // Deno (like a browser) needs the explicit extension for relative imports.
+import { decryptKey } from '../_shared/keycrypto.ts'
 import { handle } from './handler.ts'
 import type { AiHandlerDeps, StoredKey, ClaudeCall, ClaudeResult, UsageRow } from './handler.ts'
 
@@ -20,11 +21,6 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_VERSION = '2023-06-01'
 const MODEL = 'claude-sonnet-4-5'
 const MAX_TOKENS = 2000
-const ENCRYPTION_CONTEXT = 'fridgely:user_secrets:anthropic_key:v1'
-
-// AES-GCM given a 32-byte key is a non-standard (but accepted) key size; `CryptoKey`
-// is used instead of `webcrypto.CryptoKey` to stay version-agnostic.
-let cachedKey: CryptoKey | null = null
 
 function env(name: string): string {
   const value = Deno.env.get(name)
@@ -32,54 +28,9 @@ function env(name: string): string {
   return value
 }
 
-/** Raw AES-GCM key derived from `KEY_ENCRYPTION_SECRET` (32 bytes, via SHA-256). */
-async function encryptionKey(): Promise<CryptoKey> {
-  if (!cachedKey) {
-    const secret = env('KEY_ENCRYPTION_SECRET')
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret))
-    cachedKey = await crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['decrypt'])
-  }
-  return cachedKey
-}
-
-function fromBase64(value: string): Uint8Array {
-  const binary = atob(value)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
-  return bytes
-}
-
-function concat(...parts: Uint8Array[]): Uint8Array {
-  const total = parts.reduce((sum, part) => sum + part.length, 0)
-  const out = new Uint8Array(total)
-  let offset = 0
-  for (const part of parts) {
-    out.set(part, offset)
-    offset += part.length
-  }
-  return out
-}
-
-/**
- * Decrypt `user_secrets.anthropic_key_encrypted`.
- *
- * The stored string is base64 of `iv (12 bytes) || ciphertext || tag (16 bytes)`,
- * which is exactly what WebCrypto expects once the parts are concatenated again.
- * The additional authenticated data binds the ciphertext to this column, so a blob
- * lifted from elsewhere fails to decrypt instead of silently yielding a wrong key.
- */
+/** Decrypt `user_secrets.anthropic_key_encrypted` (format defined in _shared/keycrypto.ts). */
 async function decrypt(ciphertext: string): Promise<string> {
-  const payload = fromBase64(ciphertext)
-  if (payload.length <= 28) throw new Error('encrypted key is too short')
-  const iv = payload.slice(0, 12)
-  const body = payload.slice(12)
-  const aad = new TextEncoder().encode(`${ENCRYPTION_CONTEXT}:${env('SUPABASE_URL')}`)
-  const plaintext = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 },
-    await encryptionKey(),
-    body,
-  )
-  return new TextDecoder().decode(plaintext).trim()
+  return (await decryptKey(ciphertext, env('KEY_ENCRYPTION_SECRET'), env('SUPABASE_URL'))).trim()
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -155,7 +106,7 @@ async function callClaude(call: ClaudeCall): Promise<ClaudeResult> {
   }
 }
 
-/** Only `user_id`, `task` and token counts — never prompt text and never the key. */
+/** Only `user_id`, `task` and token counts - never prompt text and never the key. */
 async function recordUsage(row: UsageRow): Promise<void> {
   const { error } = await db().from('ai_usage').insert({
     user_id: row.userId,
