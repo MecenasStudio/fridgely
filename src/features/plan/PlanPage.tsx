@@ -16,5 +16,5 @@ export function PlanPage({ householdId }: { householdId: string }) {
     await setMany(Object.fromEntries(days.map((d, i) => [d, picked[i]?.id ?? null])))
   }
 
-  return <PlanView days={days} recipes={recipes} plan={plan} onSet={set} onRandomize={randomize} />
+  return <PlanView days={days} recipes={recipes} plan={plan} fridge={items} onSet={set} onRandomize={randomize} />
 }

@@ -83,7 +83,12 @@
     "plan":  {
                  "randomize":  "Losuj tydzień",
                  "none":  "— brak —",
-                 "noRecipes":  "Najpierw dodaj przepisy."
+                 "noRecipes":  "Najpierw dodaj przepisy.",
+                 "allInFridge":  "Wszystko jest",
+                 "missing_one":  "Brakuje: {{count}} składnik",
+                 "missing_few":  "Brakuje: {{count}} składniki",
+                 "missing_many":  "Brakuje: {{count}} składników",
+                 "missing_other":  "Brakuje: {{count}} składnika"
              },
     "shopping":  {
                      "generate":  "Utwórz listę z planu",

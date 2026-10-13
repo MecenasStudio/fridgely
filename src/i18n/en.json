@@ -83,7 +83,12 @@
     "plan":  {
                  "randomize":  "Randomize week",
                  "none":  "— none —",
-                 "noRecipes":  "Add some recipes first."
+                 "noRecipes":  "Add some recipes first.",
+                 "allInFridge":  "Everything is in",
+                 "missing_one":  "Missing: {{count}} ingredient",
+                 "missing_few":  "Missing: {{count}} ingredients",
+                 "missing_many":  "Missing: {{count}} ingredients",
+                 "missing_other":  "Missing: {{count}} ingredients"
              },
     "shopping":  {
                      "generate":  "Build list from plan",

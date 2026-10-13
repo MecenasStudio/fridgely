@@ -1,4 +1,4 @@
-﻿import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import i18n from '../../i18n'
 import { PlanView } from './PlanView'
 import type { Recipe } from '../../domain/types'
@@ -35,5 +35,56 @@ describe('PlanView', () => {
     rerender(<PlanView days={days} recipes={[]} plan={{}} onSet={async () => {}} onRandomize={onRandomize} />)
     expect((screen.getByRole('button', { name: 'Randomize week' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText('Add some recipes first.')).toBeTruthy()
+  })
+})
+
+describe('PlanView availability', () => {
+  const omelette: Recipe = {
+    id: 'r1',
+    title: 'Omlet',
+    ingredients: [
+      { name: 'jajka', quantity: 3, unit: 'szt' },
+      { name: 'masło', quantity: 1, unit: 'szt' },
+    ],
+    steps: [],
+  }
+
+  it('says everything is in when the fridge covers the recipe', () => {
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[
+          { id: 'a', name: 'Jajka', quantity: 6, unit: 'szt', expiresOn: null },
+          { id: 'b', name: 'masło', quantity: 1, unit: 'szt', expiresOn: null },
+        ]}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+    expect(screen.getByText('Everything is in')).toBeTruthy()
+    expect(screen.queryByText(/Missing:/)).toBeNull()
+  })
+
+  it('counts the missing ingredients and says nothing for empty days', () => {
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[{ id: 'a', name: 'jajka', quantity: 1, unit: 'szt', expiresOn: null }]}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+    // jajka are too few and masło is absent, so two ingredients are missing.
+    expect(screen.getByText('Missing: 2 ingredients')).toBeTruthy()
+    expect(screen.queryByText('Everything is in')).toBeNull()
+  })
+
+  it('treats a missing fridge prop as an empty fridge', () => {
+    render(<PlanView days={days} recipes={[omelette]} plan={{ '2026-10-12': 'r1' }} onSet={async () => {}} onRandomize={async () => {}} />)
+    expect(screen.getByText('Missing: 2 ingredients')).toBeTruthy()
   })
 })

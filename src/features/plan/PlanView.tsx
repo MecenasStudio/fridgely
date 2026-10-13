@@ -1,11 +1,13 @@
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core'
 import { useTranslation } from 'react-i18next'
-import type { Recipe } from '../../domain/types'
+import { missingFor } from '../../domain/plan'
+import type { FridgeItem, Recipe } from '../../domain/types'
 
 type Props = {
   days: string[]
   recipes: Recipe[]
   plan: Record<string, string | null>
+  fridge?: FridgeItem[]
   onSet: (day: string, recipeId: string | null) => Promise<void>
   onRandomize: () => Promise<void>
 }
@@ -29,7 +31,7 @@ function DayCell({ day, children }: { day: string; children: React.ReactNode }) 
   )
 }
 
-export function PlanView({ days, recipes, plan, onSet, onRandomize }: Props) {
+export function PlanView({ days, recipes, plan, fridge = [], onSet, onRandomize }: Props) {
   const { t, i18n } = useTranslation()
   const fmt = new Intl.DateTimeFormat(i18n.language, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
@@ -47,17 +49,24 @@ export function PlanView({ days, recipes, plan, onSet, onRandomize }: Props) {
       <DndContext onDragEnd={onDragEnd}>
         <p>{recipes.map((r) => <RecipeChip key={r.id} recipe={r} />)}</p>
         <ul>
-          {days.map((day) => (
-            <DayCell key={day} day={day}>
-              <label>
-                {fmt.format(new Date(`${day}T00:00:00Z`))}{' '}
-                <select value={plan[day] ?? ''} onChange={(e) => onSet(day, e.target.value || null)}>
-                  <option value="">{t('plan.none')}</option>
-                  {recipes.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
-                </select>
-              </label>
-            </DayCell>
-          ))}
+          {days.map((day) => {
+            const recipe = recipes.find((r) => r.id === plan[day]) ?? null
+            const missing = recipe ? missingFor(recipe, fridge) : []
+            return (
+              <DayCell key={day} day={day}>
+                <label>
+                  {fmt.format(new Date(`${day}T00:00:00Z`))}{' '}
+                  <select value={plan[day] ?? ''} onChange={(e) => onSet(day, e.target.value || null)}>
+                    <option value="">{t('plan.none')}</option>
+                    {recipes.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
+                  </select>
+                </label>
+                {recipe && (
+                  <span> {missing.length === 0 ? t('plan.allInFridge') : t('plan.missing', { count: missing.length })}</span>
+                )}
+              </DayCell>
+            )
+          })}
         </ul>
       </DndContext>
     </section>

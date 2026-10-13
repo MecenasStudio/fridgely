@@ -1,4 +1,4 @@
-﻿import { pickWeek } from './plan'
+import { missingFor, pickWeek } from './plan'
 import type { FridgeItem, Recipe } from './types'
 
 const recipe = (id: string, names: string[] = []): Recipe => ({
@@ -38,5 +38,47 @@ describe('pickWeek', () => {
       const ids = pickWeek(recipes, fridge, seeded(s)).map((r) => r!.id)
       expect(ids).toContain('r11')
     }
+  })
+})
+
+describe('missingFor', () => {
+  const fridgeItem = (name: string, quantity: number, unit = 'szt'): FridgeItem => ({
+    id: `${name}-${unit}`, name, quantity, unit, expiresOn: null,
+  })
+  const withIngredients = (ingredients: Recipe['ingredients']): Recipe => ({
+    id: 'r', title: 'r', steps: [], ingredients,
+  })
+
+  it('returns nothing when the fridge covers every ingredient', () => {
+    const recipe = withIngredients([{ name: 'Jajka', quantity: 3, unit: 'szt' }])
+    expect(missingFor(recipe, [fridgeItem('jajka', 3)])).toEqual([])
+    expect(missingFor(recipe, [fridgeItem('Jajka', 10)])).toEqual([])
+  })
+
+  it('reports a missing ingredient in full', () => {
+    const recipe = withIngredients([{ name: 'mleko', quantity: 1, unit: 'l' }])
+    expect(missingFor(recipe, [])).toEqual([{ name: 'mleko', quantity: 1, unit: 'l' }])
+  })
+
+  it('reports only the difference when there is too little', () => {
+    const recipe = withIngredients([{ name: 'mleko', quantity: 2, unit: 'l' }])
+    expect(missingFor(recipe, [fridgeItem('Mleko', 0.5, 'l')])).toEqual([
+      { name: 'mleko', quantity: 1.5, unit: 'l' },
+    ])
+  })
+
+  it('adds up duplicate fridge rows and ignores another unit', () => {
+    const recipe = withIngredients([
+      { name: 'mleko', quantity: 2, unit: 'l' },
+      { name: 'mleko', quantity: 1, unit: 'szt' },
+    ])
+    expect(missingFor(recipe, [fridgeItem('mleko', 1, 'l'), fridgeItem('mleko', 0.5, 'l')])).toEqual([
+      { name: 'mleko', quantity: 0.5, unit: 'l' },
+      { name: 'mleko', quantity: 1, unit: 'szt' },
+    ])
+  })
+
+  it('returns nothing for a recipe without ingredients', () => {
+    expect(missingFor(withIngredients([]), [fridgeItem('cokolwiek', 5)])).toEqual([])
   })
 })
