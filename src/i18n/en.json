@@ -110,5 +110,28 @@
                      "saveFailed":  "Could not save the key. Please try again.",
                      "clearFailed":  "Could not remove the key. Please try again.",
                      "language":  "Language"
-                 }
+                 },
+    "photo":  {
+                  "add":  "Add from a photo",
+                  "working":  "Reading the photo…",
+                  "added":  "Products added to your fridge.",
+                  "empty":  "I could not recognise any products. Add them by hand.",
+                  "failed":  "Could not read the photo. Please try again.",
+                  "noKey":  "No Claude key yet. Add one in Settings to use AI.",
+                  "sessionExpired":  "Your session expired. Please sign in again.",
+                  "addFailed":  "Could not add the products. The list is unchanged.",
+                  "name":  "Product name",
+                  "quantity":  "Quantity",
+                  "unit":  "Unit",
+                  "expiresOn":  "Expiry date",
+                  "remove":  "Remove from the list",
+                  "addAll":  "Add all",
+                  "readDate":  "Read the date from a photo",
+                  "reading":  "Reading the date…",
+                  "noDate":  "No date found in the photo.",
+                  "foundDate":  "Date read: {{date}}",
+                  "saveDate":  "Save the date",
+                  "saveFailed":  "Could not save the date. Please try again.",
+                  "cancel":  "Cancel"
+              }
 }

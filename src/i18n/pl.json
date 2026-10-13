@@ -110,5 +110,28 @@
                      "saveFailed":  "Nie udało się zapisać klucza. Spróbuj ponownie.",
                      "clearFailed":  "Nie udało się usunąć klucza. Spróbuj ponownie.",
                      "language":  "Język"
-                 }
+                 },
+    "photo":  {
+                  "add":  "Dodaj ze zdjęcia",
+                  "working":  "Rozpoznaję zdjęcie…",
+                  "added":  "Produkty dodane do lodówki.",
+                  "empty":  "Nie rozpoznałem żadnych produktów. Dodaj je ręcznie.",
+                  "failed":  "Nie udało się rozpoznać zdjęcia. Spróbuj ponownie.",
+                  "noKey":  "Brak klucza Claude. Dodaj go w Ustawieniach, żeby korzystać z AI.",
+                  "sessionExpired":  "Sesja wygasła. Zaloguj się ponownie.",
+                  "addFailed":  "Nie udało się dodać produktów. Lista została bez zmian.",
+                  "name":  "Nazwa produktu",
+                  "quantity":  "Ilość",
+                  "unit":  "Jednostka",
+                  "expiresOn":  "Data ważności",
+                  "remove":  "Usuń z listy",
+                  "addAll":  "Dodaj wszystko",
+                  "readDate":  "Odczytaj datę ze zdjęcia",
+                  "reading":  "Czytam datę…",
+                  "noDate":  "Nie znaleziono daty na zdjęciu.",
+                  "foundDate":  "Odczytana data: {{date}}",
+                  "saveDate":  "Zapisz datę",
+                  "saveFailed":  "Nie udało się zapisać daty. Spróbuj ponownie.",
+                  "cancel":  "Anuluj"
+              }
 }

@@ -3,6 +3,12 @@ import i18n from '../../i18n'
 import { FridgeView } from './FridgeView'
 import type { FridgeItem } from '../../domain/types'
 
+// `FridgeView` renders `PhotoImport`, which imports `lib/ai.ts`, which imports the
+// Supabase client. The view itself never talks to the network, so a stub is enough.
+vi.mock('../../lib/supabase', () => ({
+  supabase: { auth: { getSession: async () => ({ data: { session: null }, error: null }) } },
+}))
+
 const item = (id: string, name: string, expiresOn: string | null): FridgeItem => ({
   id, name, quantity: 1, unit: 'szt', expiresOn,
 })

@@ -4,6 +4,8 @@ import { expiryStatus, sortByExpiry } from '../../domain/fridge'
 import type { FridgeItem } from '../../domain/types'
 import { FridgeItemForm, type NewFridgeItem } from './FridgeItemForm'
 import { BarcodeAdd } from './BarcodeAdd'
+import { PhotoImport, ReadDateButton } from './PhotoImport'
+import type { ReadDate, Recognize } from './PhotoImport'
 
 type Props = {
   items: FridgeItem[]
@@ -11,6 +13,10 @@ type Props = {
   onAdd: (item: NewFridgeItem) => Promise<void>
   onUpdate: (id: string, patch: Partial<NewFridgeItem>) => Promise<void>
   onRemove: (id: string) => Promise<void>
+  /** Photo tasks from the AI screen; the page injects the real client. */
+  locale?: 'pl' | 'en'
+  recognize?: Recognize
+  readDate?: ReadDate
 }
 
 type Update = (id: string, patch: Partial<NewFridgeItem>) => Promise<void>
@@ -67,10 +73,11 @@ function ExpiryInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update })
   )
 }
 
-export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
+export function FridgeView({ items, today, onAdd, onUpdate, onRemove, locale = 'en', recognize, readDate }: Props) {
   const { t } = useTranslation()
   const sorted = sortByExpiry(items)
   const [failedId, setFailedId] = useState<string | null>(null)
+  const [dateTarget, setDateTarget] = useState<{ id: string; name: string } | null>(null)
 
   // Every write goes through here, so a failed update always shows up on that row.
   async function update(id: string, patch: Partial<NewFridgeItem>) {
@@ -87,6 +94,17 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
       <h2>{t('nav.fridge')}</h2>
       <FridgeItemForm onAdd={onAdd} />
       <BarcodeAdd onAdd={onAdd} />
+      {recognize && readDate && (
+        <PhotoImport
+          locale={locale}
+          onAdd={onAdd}
+          recognize={recognize}
+          readDate={readDate}
+          onUpdateDate={(id, expiresOn) => update(id, { expiresOn })}
+          dateTarget={dateTarget}
+          onDateDone={() => setDateTarget(null)}
+        />
+      )}
       {sorted.length === 0 ? (
         <p>{t('fridge.empty')}</p>
       ) : (
@@ -100,6 +118,9 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
                 <QuantityInput item={item} onUpdate={update} />{' '}
                 {status === 'unknown' && <>{t('fridge.addExpiry')} </>}
                 <ExpiryInput item={item} onUpdate={update} />{' '}
+                {readDate && (
+                  <ReadDateButton name={item.name} onClick={() => setDateTarget({ id: item.id, name: item.name })} />
+                )}{' '}
                 {status === 'expired' && <strong>{t('fridge.expired')} </strong>}
                 {status === 'soon' && <strong>{t('fridge.soon')} </strong>}
                 <button type="button" onClick={() => onRemove(item.id)} aria-label={`${t('fridge.remove')} ${item.name}`}>×</button>
