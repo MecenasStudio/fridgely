@@ -175,3 +175,63 @@ describe('RecipesView editing', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
   })
 })
+
+describe('RecipesView filtering', () => {
+  const omlet: Recipe = {
+    id: 'r1',
+    title: 'Omlet',
+    ingredients: [{ name: 'jajka', quantity: 3, unit: 'szt' }],
+    steps: [],
+  }
+  const zurek: Recipe = {
+    id: 'r2',
+    title: 'Żurek',
+    ingredients: [{ name: 'zakwas', quantity: 1, unit: 'l' }],
+    steps: [],
+  }
+
+  function renderFiltered(fridge: { name: string; quantity: number; unit: string }[]) {
+    render(
+      <RecipesView
+        recipes={[omlet, zurek]}
+        fridge={fridge.map((item, index) => ({ id: `f${index}`, expiresOn: null, ...item }))}
+        onAdd={vi.fn(noop)}
+        onDelete={vi.fn(noop)}
+        onUpdate={vi.fn(noop)}
+      />,
+    )
+  }
+
+  it('filters by title, ignoring case and diacritics, and counts the results', () => {
+    renderFiltered([])
+    expect(screen.getByRole('status').textContent).toBe('2 recipes')
+
+    fireEvent.change(screen.getByLabelText('Search recipes'), { target: { value: 'zur' } })
+    expect(screen.getByText('Żurek')).toBeTruthy()
+    expect(screen.queryByText('Omlet')).toBeNull()
+    expect(screen.getByRole('status').textContent).toBe('1 recipe')
+
+    fireEvent.change(screen.getByLabelText('Search recipes'), { target: { value: 'nie ma' } })
+    expect(screen.getByText('Nothing matches your search.')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe('0 recipes')
+  })
+
+  it('shows only recipes the fridge can cover when the toggle is on', () => {
+    renderFiltered([{ name: 'Jajka', quantity: 6, unit: 'szt' }])
+
+    fireEvent.click(screen.getByLabelText('Only what I can cook now'))
+    expect(screen.getByText('Omlet')).toBeTruthy()
+    expect(screen.queryByText('Żurek')).toBeNull()
+    expect(screen.getByRole('status').textContent).toBe('1 recipe')
+
+    // Turning it off brings the other recipe back.
+    fireEvent.click(screen.getByLabelText('Only what I can cook now'))
+    expect(screen.getByText('Żurek')).toBeTruthy()
+  })
+
+  it('shows no filter box on an empty list', () => {
+    render(<RecipesView recipes={[]} onAdd={vi.fn(noop)} onDelete={vi.fn(noop)} onUpdate={vi.fn(noop)} />)
+    expect(screen.getByText('No recipes yet.')).toBeTruthy()
+    expect(screen.queryByLabelText('Search recipes')).toBeNull()
+  })
+})

@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatIngredient, parseIngredient } from '../../domain/recipe'
-import type { Ingredient, Recipe } from '../../domain/types'
+import { missingFor } from '../../domain/plan'
+import { matchesQuery } from '../../domain/search'
+import type { FridgeItem, Ingredient, Recipe } from '../../domain/types'
 
 type Props = {
   recipes: Recipe[]
+  /** The fridge decides which recipes can be cooked right now. */
+  fridge?: FridgeItem[]
   onAdd: (r: Omit<Recipe, 'id'>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onUpdate: (id: string, patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => Promise<void>
@@ -136,13 +140,20 @@ function EditRecipeForm({
   )
 }
 
-export function RecipesView({ recipes, onAdd, onDelete, onUpdate }: Props) {
+export function RecipesView({ recipes, fridge = [], onAdd, onDelete, onUpdate }: Props) {
   const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [ingredients, setIngredients] = useState('')
   const [steps, setSteps] = useState('')
   const [addFailed, setAddFailed] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [cookableOnly, setCookableOnly] = useState(false)
+
+  const visible = recipes.filter(
+    (recipe) =>
+      matchesQuery(recipe.title, query) && (!cookableOnly || missingFor(recipe, fridge).length === 0),
+  )
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -172,11 +183,35 @@ export function RecipesView({ recipes, onAdd, onDelete, onUpdate }: Props) {
         <button type="submit">{t('recipes.add')}</button>
       </form>
       {addFailed && <p role="alert">{t('recipes.addFailed')}</p>}
+      {recipes.length > 0 && (
+        <div>
+          <label>
+            {t('recipes.search')}{' '}
+            <input
+              type="search"
+              aria-label={t('recipes.search')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>{' '}
+          <label>
+            <input
+              type="checkbox"
+              checked={cookableOnly}
+              onChange={(e) => setCookableOnly(e.target.checked)}
+            />{' '}
+            {t('recipes.cookableOnly')}
+          </label>{' '}
+          <span role="status">{t('recipes.found', { count: visible.length })}</span>
+        </div>
+      )}
       {recipes.length === 0 ? (
         <p>{t('recipes.empty')}</p>
+      ) : visible.length === 0 ? (
+        <p>{t('recipes.noMatches')}</p>
       ) : (
         <ul>
-          {recipes.map((r) => (
+          {visible.map((r) => (
             <li key={r.id}>
               <strong>{r.title}</strong>{' '}
               <button type="button" aria-label={`${t('recipes.edit')} ${r.title}`} onClick={() => setEditingId(r.id)}>

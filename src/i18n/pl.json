@@ -77,6 +77,13 @@
                     "save":  "Zapisz",
                     "cancel":  "Anuluj",
                     "updateFailed":  "Nie udało się zapisać zmian. Spróbuj ponownie.",
+                    "search":  "Szukaj przepisu",
+                    "cookableOnly":  "Tylko to, co mogę ugotować teraz",
+                    "found_one":  "{{count}} przepis",
+                    "found_few":  "{{count}} przepisy",
+                    "found_many":  "{{count}} przepisów",
+                    "found_other":  "{{count}} przepisu",
+                    "noMatches":  "Nic nie pasuje do wyszukiwania.",
                     "addFailed":  "Nie udało się dodać przepisu. Spróbuj ponownie.",
                     "deleteFailed":  "Nie udało się usunąć przepisu. Spróbuj ponownie."
                 },
