@@ -4,7 +4,7 @@ Nowe wpisy dodawaj na górze, według szablonu z `docs/collab/README.md`.
 
 ## Podsumowanie paczki zadań 40–51 (na górze, dla przeglądu)  —  2026-10-12
 
-- **Zrobione i gotowe do przeglądu: 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51** — dwanaście zadań, dwanaście commitów (`8217125` … `dffd6d3`).
+- **Zrobione i gotowe do przeglądu: 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51** — dwanaście zadań, dwanaście commitów (`8217125` … `2474e1c`, plus `071b401` z raportami).
 - **BLOCKED: brak.** Nic nie wymagało zmiany bazy, funkcji serwerowej ani nowej zależności.
 - **Stan na końcu:** `npm test` → `Test Files 36 passed (36)` / `Tests 336 passed (336)`; `npm run build` → `tsc --noEmit` bez błędów + `vite build` OK. Na początku paczki było 30 plików testowych i 284 testy.
 - **Zakres:** tylko pliki z sekcji `Files` poszczególnych zadań (plus `src/domain/validate.ts`/`limits.ts`/`export.ts` i `src/lib/realtime.ts`/`useOnline.ts`, wszystkie wymienione wprost w zleceniach). `supabase/`, `package.json`, `package-lock.json`, `.env*`, `docs/superpowers/` nietknięte, `git pull` był `Already up to date`, żadnego pusha ani merge.
@@ -83,7 +83,7 @@ Pytania / blockery: brak.
 ## Zadanie 47: Testy własności dla logiki domenowej  —  2026-10-12
 
 STATUS: READY FOR REVIEW
-Gałąź / commity: `task/40-hardening`, brak własnego commita — patrz „Decyzje własne"
+Gałąź / commity: `task/40-hardening`, `2474e1c` (własny commit dla pliku z testami)
 Zmienione pliki: `src/domain/properties.test.ts` (nowy)
 
 Co zrobiłem: plik testów własności bez nowych bibliotek: 500 losowych przypadków na własność, generowanych tym samym ziarnowym generatorem co w `plan.test.ts` (stałe ziarno, więc kontrprzykład jest powtarzalny). Sprawdzane własności: `buildShoppingList` nigdy nie zwraca ilości `<= 0`, jest niezależne od kolejności przepisów i lodówki (porównanie po posortowanej kopii) i nie rośnie po dodaniu produktu do lodówki; `consumePlan` nie schodzi poniżej zera, nie raportuje tego samego wiersza dwa razy, nie rusza wierszy innych nazw/jednostek i nigdy nie odejmuje więcej, niż przepis wymaga (suma na parę nazwa+jednostka); `findMergeTarget` jest symetryczne względem wielkości liter i spacji, a inna jednostka lub data nie pasuje; `pickWeek` zwraca zawsze 7 elementów, każdy z wejścia albo `null`, a przy pustej liście same `null`; `weekDays`/`shiftWeek` dają kolejne dni i wracają do początku po `+7/-7`; `purchasedToFridge` zachowuje dokładnie odhaczone wiersze z `expiresOn: null` i znormalizowaną nazwą; `validateItem` przyjmuje własne znormalizowane wyjście bez zmian.
@@ -93,7 +93,7 @@ Dowód:
 - `npm run build` → `tsc --noEmit` bez błędów.
 - Testy nie znalazły błędów w kodzie produkcyjnym, więc nie było czego poprawiać.
 
-Decyzje własne — **odstępstwo od zlecenia do wyjaśnienia**: zlecenie mówiło „bez zmian w kodzie produkcyjnym, chyba że test ujawni błąd: opisz w raporcie i popraw minimalnie **osobnym commitem**", ale nie dało temu zadaniu własnego commita. Testy nic nie ujawniły, więc zgodnie z poleceniem „jeden commit na zadanie" nie tworzyłem pustego commita — plik `properties.test.ts` wszedł do commita zadania 48 (`16b4d82`). Jeśli wolisz osobny commit, mogę go wydzielić, ale bez zmiany treści wymagałoby to przepisania historii. Poza tym: generuję nazwy z polskimi znakami („żółć", „zolc"), żeby własności dotyczyły też normalizacji; ilości są zaokrąglane do 3 miejsc, żeby porównania sum nie łapały szumu zmiennoprzecinkowego.
+Decyzje własne: plik ma **własny commit** (`2474e1c`), zgodnie ze zleceniem. Testy nie ujawniły błędu w kodzie produkcyjnym, więc nic nie poprawiałem. Generuję nazwy z polskimi znakami („żółć", „zolc"), żeby własności dotyczyły też normalizacji; ilości są zaokrąglane do 3 miejsc, żeby porównania sum nie łapały szumu zmiennoprzecinkowego. Uwaga o procesie: pierwsza próba commita tego pliku nie doszła do skutku, bo polecenie było sklejone z uruchomieniem testów, które przeszło w zadanie w tle — plik został niezacommitowany i zauważyłem to przy sprawdzaniu `git status`; teraz jest w `2474e1c`.
 
 Pytania / blockery: brak, poza powyższą uwagą o commicie.
 
