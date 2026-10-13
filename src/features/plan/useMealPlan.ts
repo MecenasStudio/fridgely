@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { subscribeToHousehold } from '../../lib/realtime'
 
 export function useMealPlan(householdId: string, days: string[]) {
   const [plan, setPlan] = useState<Record<string, string | null>>({})
@@ -29,13 +30,9 @@ export function useMealPlan(householdId: string, days: string[]) {
 
   useEffect(() => {
     load()
-    const channel = supabase
-      .channel(`plan:${householdId}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'meal_plan', filter: `household_id=eq.${householdId}` },
-        () => { load() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Filtering and debouncing live in `subscribeToHousehold`, the single place allowed
+    // to build a Realtime filter.
+    return subscribeToHousehold('meal_plan', householdId, load)
   }, [householdId, load])
 
   const set = async (day: string, recipeId: string | null) => {

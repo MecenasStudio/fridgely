@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { subscribeToHousehold } from '../../lib/realtime'
 import { findMergeTarget } from '../../domain/fridge'
 import type { FridgeItem } from '../../domain/types'
 import type { NewFridgeItem } from './FridgeItemForm'
@@ -52,13 +53,9 @@ export function useFridge(householdId: string) {
 
   useEffect(() => {
     load()
-    const channel = supabase
-      .channel(`fridge:${householdId}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'fridge_items', filter: `household_id=eq.${householdId}` },
-        () => { load() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Filtering and debouncing live in `subscribeToHousehold`, the single place allowed to
+    // build a Realtime filter.
+    return subscribeToHousehold('fridge_items', householdId, load)
   }, [householdId, load])
 
   /**
