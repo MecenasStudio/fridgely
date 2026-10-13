@@ -93,13 +93,14 @@ function parseFridgeItem(value: unknown): FridgeItem {
   if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity <= 0) {
     throw new Error('bad quantity')
   }
-  if (typeof unit !== 'string' || unit.length === 0 || unit.length > MAX_UNIT_LENGTH) {
+  const cleanUnit = typeof unit === 'string' ? sanitizeName(unit) : ''
+  if (cleanUnit.length === 0 || cleanUnit.length > MAX_UNIT_LENGTH) {
     throw new Error('bad unit')
   }
   if (expiresOn !== null && !(typeof expiresOn === 'string' && isValidDate(expiresOn))) {
     throw new Error('bad expiresOn')
   }
-  return { name: clean, quantity, unit, expiresOn: expiresOn as string | null }
+  return { name: clean, quantity, unit: cleanUnit, expiresOn: expiresOn as string | null }
 }
 
 /** Validates the request body. Throws when anything is malformed. */

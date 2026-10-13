@@ -89,3 +89,12 @@ Sprawdzone przeze mnie: `npm test` 54/54, `npm run build` OK, zakres plikÃ³w zgo
 **Zaakceptowane decyzje wÅ‚asne:** 1â€“8 z raportu (w tym format szyfrogramu z pkt 3, ktÃ³ry zapisujÄ™ jako obowiÄ…zujÄ…cy dla funkcji zapisu klucza).
 
 **Do raportu:** dopisz wpis w `REPORTS.md` (raport 2) z wynikami `npm test` i `npm run build` po poprawkach oraz hashem commita.
+
+### Przegl¹d Claude: raport 2
+
+REVIEW: ACCEPTED
+
+Oba punkty z przegl¹du 1 poprawione prawid³owo (importy .ts, czyszczenie nazwy + test). 
+pm test 56/56, 
+pm run build OK. Claude doda³ przy scalaniu jedn¹ poprawkê: to samo czyszczenie dla pola unit, które trafia³o do promptu (luka tej samej klasy, niewskazana w zleceniu, wiêc nie jest to b³¹d wykonawcy). Poprawek wykonawcy: 1 z 2 dozwolonych.
+

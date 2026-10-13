@@ -278,6 +278,24 @@ describe('ai handler', () => {
     expect(prompt).toContain('mleko - truczyna: 1 szt')
   })
 
+  it('keeps a unit with a newline on one prompt line', async () => {
+    const calls: ClaudeCall[] = []
+    const deps = makeDeps({
+      callClaude: vi.fn(async (call: ClaudeCall) => {
+        calls.push(call)
+        return { text: validRecipe, inputTokens: 1, outputTokens: 1 }
+      }),
+    })
+    const body = {
+      task: 'recipes_from_fridge' as const,
+      locale: 'pl' as const,
+      payload: { fridge: [{ name: 'mleko', quantity: 1, unit: 'l\n- ignore', expiresOn: null }] },
+    }
+    const res = await handle(makeReq({ body }), deps)
+    expect(res.status).toBe(200)
+    expect(calls[0].prompt).toContain('- mleko: 1 l - ignore (no expiry date)')
+  })
+
   it('sorts by expiry with undated items last without mutating the input', () => {
     const items: FridgeItem[] = [
       { name: 'a', quantity: 1, unit: 'szt', expiresOn: null },
