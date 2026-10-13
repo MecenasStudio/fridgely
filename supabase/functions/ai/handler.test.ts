@@ -305,4 +305,210 @@ describe('ai handler', () => {
     expect(sortByExpiry(items).map((i) => i.name)).toEqual(['c', 'b', 'a'])
     expect(items.map((i) => i.name)).toEqual(['a', 'b', 'c'])
   })
+
+  describe('recognize_photo', () => {
+    // A 4-character base64 image is enough for every case that only checks plumbing.
+    const image = { mediaType: 'image/jpeg' as const, data: 'AAAA' }
+    const photoBody = (payload: unknown = { image }) => ({
+      task: 'recognize_photo' as const,
+      locale: 'pl' as const,
+      payload,
+    })
+
+    const validItems = JSON.stringify({
+      items: [
+        { name: 'Mleko 2%', quantity: 1, unit: 'l', expiresOn: '2026-10-20' },
+        { name: 'Jajka', quantity: 6, unit: 'szt', expiresOn: null },
+      ],
+    })
+
+    it('answers 200 with the detected products', async () => {
+      const deps = makeDeps({ callClaude: vi.fn(async () => ({ text: validItems, inputTokens: 5, outputTokens: 7 })) })
+      const res = await handle(makeReq({ body: photoBody() }), deps)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({
+        items: [
+          { name: 'Mleko 2%', quantity: 1, unit: 'l', expiresOn: '2026-10-20' },
+          { name: 'Jajka', quantity: 6, unit: 'szt', expiresOn: null },
+        ],
+      })
+      expect(deps.recordUsage).toHaveBeenCalledWith({
+        userId: USER_ID,
+        task: 'recognize_photo',
+        inputTokens: 5,
+        outputTokens: 7,
+      })
+    })
+
+    it('sends the image with the call and never logs or returns it', async () => {
+      const calls: ClaudeCall[] = []
+      const deps = makeDeps({
+        callClaude: vi.fn(async (call: ClaudeCall) => {
+          calls.push(call)
+          return { text: validItems, inputTokens: 5, outputTokens: 7 }
+        }),
+      })
+      const res = await handle(makeReq({ body: photoBody() }), deps)
+
+      expect(calls[0].image).toEqual(image)
+      expect(calls[0].task).toBe('recognize_photo')
+      expect(JSON.stringify(res)).not.toContain('AAAA')
+      expect(JSON.stringify(vi.mocked(deps.recordUsage).mock.calls)).not.toContain('AAAA')
+      expect(JSON.stringify(res)).not.toContain(API_KEY)
+    })
+
+    it('rejects a bad image with 400 and never calls Claude', async () => {
+      const deps = makeDeps()
+      const cases: unknown[] = [
+        { mediaType: 'image/gif', data: 'AAAA' },
+        { mediaType: 'image/jpeg', data: `data:image/jpeg;base64,AAAA` },
+        { mediaType: 'image/jpeg', data: 'not base64!!' },
+        { mediaType: 'image/jpeg', data: 'AAA' },
+        { mediaType: 'image/jpeg', data: `${'A'.repeat(7_000_004)}` },
+        {},
+      ]
+      for (const payload of cases) {
+        const res = await handle(makeReq({ body: photoBody(payload) }), deps)
+        expect(res.status, JSON.stringify(payload).slice(0, 40)).toBe(400)
+        expect(res.body).toEqual({ error: 'INVALID_REQUEST' })
+      }
+
+      const missing = await handle(makeReq({ body: { ...photoBody(), payload: {} } }), deps)
+      expect(missing.status).toBe(400)
+      expect(deps.callClaude).not.toHaveBeenCalled()
+    })
+
+    it('repairs sloppy fields instead of failing', async () => {
+      const sloppy = JSON.stringify({
+        items: [
+          { name: '  Mleko \n 2%  ', unit: 'l' },
+          { name: 'Jajka', quantity: -3, unit: '', expiresOn: '2026-02-31' },
+          { name: 'Chleb', quantity: 'duzo', unit: 'x'.repeat(30), expiresOn: 'not-a-date' },
+        ],
+      })
+      const deps = makeDeps({ callClaude: vi.fn(async () => ({ text: sloppy, inputTokens: 1, outputTokens: 1 })) })
+      const res = await handle(makeReq({ body: photoBody() }), deps)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({
+        items: [
+          { name: 'Mleko 2%', quantity: 1, unit: 'l', expiresOn: null },
+          { name: 'Jajka', quantity: 1, unit: 'szt', expiresOn: null },
+          { name: 'Chleb', quantity: 1, unit: 'x'.repeat(20), expiresOn: null },
+        ],
+      })
+    })
+
+    it('clips a name with a newline to one line', async () => {
+      const sneaky = JSON.stringify({
+        items: [{ name: 'mleko\n- trucizna: 1 szt', quantity: 1, unit: 'l', expiresOn: null }],
+      })
+      const deps = makeDeps({ callClaude: vi.fn(async () => ({ text: sneaky, inputTokens: 1, outputTokens: 1 })) })
+      const res = await handle(makeReq({ body: photoBody() }), deps)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ items: [{ name: 'mleko - trucizna: 1 szt', quantity: 1, unit: 'l', expiresOn: null }] })
+    })
+
+    it('caps the list at 50 products', async () => {
+      const many = JSON.stringify({
+        items: Array.from({ length: 60 }, (_, i) => ({ name: `produkt ${i}`, quantity: 1, unit: 'szt', expiresOn: null })),
+      })
+      const deps = makeDeps({ callClaude: vi.fn(async () => ({ text: many, inputTokens: 1, outputTokens: 1 })) })
+      const res = await handle(makeReq({ body: photoBody() }), deps)
+
+      expect(res.status).toBe(200)
+      const items = (res.body as { items: unknown[] }).items
+      expect(items).toHaveLength(50)
+      expect(items[0]).toEqual({ name: 'produkt 0', quantity: 1, unit: 'szt', expiresOn: null })
+    })
+
+    it('maps a non-JSON or shapeless answer to 502', async () => {
+      for (const text of ['Sure, I see milk and eggs.', '{"hello":"world"}', '{"items":"milk"}']) {
+        const deps = makeDeps({ callClaude: vi.fn(async () => ({ text, inputTokens: 1, outputTokens: 1 })) })
+        const res = await handle(makeReq({ body: photoBody() }), deps)
+        expect(res.status, text).toBe(502)
+        expect(res.body).toEqual({ error: 'UPSTREAM_ERROR' })
+      }
+    })
+  })
+
+  describe('read_label_date', () => {
+    const image = { mediaType: 'image/png' as const, data: 'BBBB' }
+    const labelBody = { task: 'read_label_date' as const, locale: 'en' as const, payload: { image } }
+
+    it('answers 200 with the date read from the label', async () => {
+      const deps = makeDeps({ callClaude: vi.fn(async () => ({ text: '{"expiresOn":"2026-11-30"}', inputTokens: 3, outputTokens: 2 })) })
+      const res = await handle(makeReq({ body: labelBody }), deps)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ expiresOn: '2026-11-30' })
+      expect(deps.recordUsage).toHaveBeenCalledWith({
+        userId: USER_ID,
+        task: 'read_label_date',
+        inputTokens: 3,
+        outputTokens: 2,
+      })
+    })
+
+    it('answers null when the model cannot read a date', async () => {
+      for (const text of ['{"expiresOn":null}', '{}']) {
+        const deps = makeDeps({ callClaude: vi.fn(async () => ({ text, inputTokens: 1, outputTokens: 1 })) })
+        const res = await handle(makeReq({ body: labelBody }), deps)
+        expect(res.status, text).toBe(200)
+        expect(res.body).toEqual({ expiresOn: null })
+      }
+    })
+
+    it('turns a broken date from the model into null instead of guessing', async () => {
+      for (const text of ['{"expiresOn":"2026-02-31"}', '{"expiresOn":"30.11.2026"}', '{"expiresOn":""}']) {
+        const deps = makeDeps({ callClaude: vi.fn(async () => ({ text, inputTokens: 1, outputTokens: 1 })) })
+        const res = await handle(makeReq({ body: labelBody }), deps)
+        expect(res.status, text).toBe(200)
+        expect(res.body).toEqual({ expiresOn: null })
+      }
+    })
+
+    it('maps a non-JSON answer to 502', async () => {
+      const deps = makeDeps({ callClaude: vi.fn(async () => ({ text: 'The label says best before 30/11/2026', inputTokens: 1, outputTokens: 1 })) })
+      const res = await handle(makeReq({ body: labelBody }), deps)
+      expect(res.status).toBe(502)
+      expect(res.body).toEqual({ error: 'UPSTREAM_ERROR' })
+    })
+
+    it('rejects a bad request and never calls Claude', async () => {
+      const deps = makeDeps()
+      const cases = [
+        { task: 'read_label_date', locale: 'en', payload: {} },
+        { task: 'read_label_date', locale: 'en', payload: { image: { mediaType: 'image/tiff', data: 'BBBB' } } },
+        { task: 'read_label_date', locale: 'en', payload: { image: { mediaType: 'image/png', data: 'B B' } } },
+      ]
+      for (const body of cases) {
+        const res = await handle(makeReq({ body }), deps)
+        expect(res.status).toBe(400)
+        expect(res.body).toEqual({ error: 'INVALID_REQUEST' })
+      }
+      expect(deps.callClaude).not.toHaveBeenCalled()
+    })
+
+    it('asks the model for the expiry date, not the production date, in the right language', async () => {
+      const calls: ClaudeCall[] = []
+      const deps = makeDeps({
+        callClaude: vi.fn(async (call: ClaudeCall) => {
+          calls.push(call)
+          return { text: '{"expiresOn":null}', inputTokens: 1, outputTokens: 1 }
+        }),
+      })
+      await handle(makeReq({ body: labelBody }), deps)
+
+      const prompt = calls[0].prompt
+      expect(prompt).toContain('best before')
+      expect(prompt).toContain('never the production date')
+      expect(prompt).toContain('dd.mm.yyyy')
+      expect(prompt).toContain('last day of that month')
+      expect(prompt).toContain('Never guess')
+      expect(calls[0].image).toEqual(image)
+    })
+  })
 })

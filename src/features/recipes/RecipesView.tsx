@@ -1,12 +1,24 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { parseIngredient } from '../../domain/recipe'
-import type { Recipe } from '../../domain/types'
+import { formatIngredient, parseIngredient } from '../../domain/recipe'
+import { missingFor } from '../../domain/plan'
+import { matchesQuery } from '../../domain/search'
+import type { FridgeItem, Ingredient, Recipe } from '../../domain/types'
+import { LoadError } from '../common/LoadError'
 
 type Props = {
   recipes: Recipe[]
+  /** The fridge decides which recipes can be cooked right now. */
+  fridge?: FridgeItem[]
   onAdd: (r: Omit<Recipe, 'id'>) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onUpdate: (id: string, patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => Promise<void>
+  /** True until the first load settles: shows "Loading…" instead of the empty state. */
+  loading?: boolean
+  /** True when the last load failed. */
+  error?: boolean
+  /** Retries the failing load. */
+  onReload?: () => void
 }
 
 /**
@@ -50,12 +62,105 @@ function DeleteButton({ title, onDelete }: { title: string; onDelete: () => Prom
   )
 }
 
-export function RecipesView({ recipes, onAdd, onDelete }: Props) {
+/** Shared by the "add" form and the per-recipe edit form. */
+type RecipeDraft = { title: string; ingredients: string; steps: string }
+
+function ingredientsFromText(text: string): Ingredient[] {
+  return text.split('\n').map(parseIngredient).filter((i) => i !== null)
+}
+
+function stepsFromText(text: string): string[] {
+  return text.split('\n').map((step) => step.trim()).filter(Boolean)
+}
+
+/**
+ * The edit form of one recipe. It starts from the stored recipe and only calls `onUpdate`
+ * when the title is filled in; "Cancel" simply closes, leaving the recipe untouched.
+ */
+function EditRecipeForm({
+  recipe,
+  onUpdate,
+  onClose,
+}: {
+  recipe: Recipe
+  onUpdate: (patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => Promise<void>
+  onClose(): void
+}) {
+  const { t } = useTranslation()
+  const [draft, setDraft] = useState<RecipeDraft>({
+    title: recipe.title,
+    ingredients: recipe.ingredients.map(formatIngredient).join('\n'),
+    steps: recipe.steps.join('\n'),
+  })
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    const title = draft.title.trim()
+    if (!title || saving) return
+    setSaving(true)
+    setFailed(false)
+    try {
+      await onUpdate({
+        title,
+        ingredients: ingredientsFromText(draft.ingredients),
+        steps: stepsFromText(draft.steps),
+      })
+      onClose()
+    } catch {
+      setFailed(true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <input
+        required
+        aria-label={t('recipes.title')}
+        placeholder={t('recipes.title')}
+        value={draft.title}
+        onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+      />
+      <textarea
+        aria-label={t('recipes.ingredientsHint')}
+        placeholder={t('recipes.ingredientsHint')}
+        value={draft.ingredients}
+        onChange={(e) => setDraft({ ...draft, ingredients: e.target.value })}
+      />
+      <textarea
+        aria-label={t('recipes.steps')}
+        placeholder={t('recipes.steps')}
+        value={draft.steps}
+        onChange={(e) => setDraft({ ...draft, steps: e.target.value })}
+      />
+      <button type="submit" disabled={draft.title.trim().length === 0 || saving}>
+        {t('recipes.save')}
+      </button>{' '}
+      <button type="button" onClick={onClose}>
+        {t('recipes.cancel')}
+      </button>
+      {failed && <p role="alert">{t('recipes.updateFailed')}</p>}
+    </form>
+  )
+}
+
+export function RecipesView({ recipes, fridge = [], onAdd, onDelete, onUpdate, loading = false, error = false, onReload }: Props) {
   const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [ingredients, setIngredients] = useState('')
   const [steps, setSteps] = useState('')
   const [addFailed, setAddFailed] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [cookableOnly, setCookableOnly] = useState(false)
+
+  const visible = recipes.filter(
+    (recipe) =>
+      matchesQuery(recipe.title, query) && (!cookableOnly || missingFor(recipe, fridge).length === 0),
+  )
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -64,8 +169,8 @@ export function RecipesView({ recipes, onAdd, onDelete }: Props) {
     try {
       await onAdd({
         title: title.trim(),
-        ingredients: ingredients.split('\n').map(parseIngredient).filter((i) => i !== null),
-        steps: steps.split('\n').map((s) => s.trim()).filter(Boolean),
+        ingredients: ingredientsFromText(ingredients),
+        steps: stepsFromText(steps),
       })
       setTitle('')
       setIngredients('')
@@ -75,9 +180,19 @@ export function RecipesView({ recipes, onAdd, onDelete }: Props) {
     }
   }
 
+  if (loading) {
+    return (
+      <section>
+        <h2>{t('nav.recipes')}</h2>
+        <p role="status">{t('common.loading')}</p>
+      </section>
+    )
+  }
+
   return (
     <section>
       <h2>{t('nav.recipes')}</h2>
+      <LoadError error={error} onRetry={onReload} />
       <form onSubmit={submit}>
         <input required placeholder={t('recipes.title')} value={title} onChange={(e) => setTitle(e.target.value)} />
         <textarea placeholder={t('recipes.ingredientsHint')} value={ingredients} onChange={(e) => setIngredients(e.target.value)} />
@@ -85,15 +200,49 @@ export function RecipesView({ recipes, onAdd, onDelete }: Props) {
         <button type="submit">{t('recipes.add')}</button>
       </form>
       {addFailed && <p role="alert">{t('recipes.addFailed')}</p>}
+      {recipes.length > 0 && (
+        <div>
+          <label>
+            {t('recipes.search')}{' '}
+            <input
+              type="search"
+              aria-label={t('recipes.search')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>{' '}
+          <label>
+            <input
+              type="checkbox"
+              checked={cookableOnly}
+              onChange={(e) => setCookableOnly(e.target.checked)}
+            />{' '}
+            {t('recipes.cookableOnly')}
+          </label>{' '}
+          <span role="status">{t('recipes.found', { count: visible.length })}</span>
+        </div>
+      )}
       {recipes.length === 0 ? (
         <p>{t('recipes.empty')}</p>
+      ) : visible.length === 0 ? (
+        <p>{t('recipes.noMatches')}</p>
       ) : (
         <ul>
-          {recipes.map((r) => (
+          {visible.map((r) => (
             <li key={r.id}>
               <strong>{r.title}</strong>{' '}
+              <button type="button" aria-label={`${t('recipes.edit')} ${r.title}`} onClick={() => setEditingId(r.id)}>
+                {t('recipes.edit')}
+              </button>{' '}
               <DeleteButton title={r.title} onDelete={() => onDelete(r.id)} />
-              <div>{r.ingredients.map((i) => `${i.quantity} ${i.unit} ${i.name}`).join(', ')}</div>
+              {editingId === r.id && (
+                <EditRecipeForm
+                  recipe={r}
+                  onUpdate={(patch) => onUpdate(r.id, patch)}
+                  onClose={() => setEditingId(null)}
+                />
+              )}
+              <div>{r.ingredients.map((ing) => `${ing.quantity} ${ing.unit} ${ing.name}`).join(', ')}</div>
               {(r.steps ?? []).length > 0 && (
                 <details>
                   <summary>{t('recipes.showSteps')}</summary>

@@ -1,14 +1,14 @@
 // Client for the `ai` Edge Function.
 //
 // The Anthropic key never exists in the browser: this module only sends the user's
-// Supabase JWT and the fridge contents, and reads back a recipe. Every failure is
-// surfaced as an `AiError` with a stable `code`, so the UI can route the user to the
-// API-key settings screen on `NO_API_KEY`.
+// Supabase JWT, the fridge contents or a prepared photo, and reads back a recipe, a
+// product list or a date. Every failure is surfaced as an `AiError` with a stable
+// `code`, so the UI can route the user to the API-key settings screen on `NO_API_KEY`.
 
 import { supabase } from './supabase'
 
 export type AiErrorCode = 'UNAUTHENTICATED' | 'INVALID_REQUEST' | 'NO_API_KEY' | 'UPSTREAM_ERROR'
-export type AiTask = 'recipes_from_fridge' | 'dinner_from_expiring'
+export type AiTask = 'recipes_from_fridge' | 'dinner_from_expiring' | 'recognize_photo' | 'read_label_date'
 export type AiLocale = 'pl' | 'en'
 
 export type FridgeItem = {
@@ -24,6 +24,12 @@ export type Recipe = {
   steps: string[]
   missing: string[]
 }
+
+/** A photo on its way to a vision task: plain base64, no `data:` prefix. */
+export type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp'
+export type PhotoPayload = { mediaType: ImageMediaType; data: string }
+/** One product the model spotted on a photo. */
+export type DetectedItem = { name: string; quantity: number; unit: string; expiresOn: string | null }
 
 export type AiPayload = { fridge: FridgeItem[] }
 export type AiResponse = { recipe: Recipe }
@@ -105,6 +111,16 @@ function baseUrl(): string {
  * Rejects with `AiError`; `NO_API_KEY` means the user still has to save a key in settings.
  */
 export async function askAi(task: AiTask, payload: AiPayload, locale: AiLocale): Promise<Recipe> {
+  const body = await callAi({ task, locale, payload })
+  const recipe = body.recipe
+  if (!isRecipe(recipe)) {
+    throw new AiError('UPSTREAM_ERROR', 'malformed response')
+  }
+  return { ...recipe, missing: recipe.missing ?? [] }
+}
+
+/** One request to the `ai` function; every helper below shares this plumbing. */
+async function callAi(request: { task: AiTask; locale: AiLocale; payload: unknown }): Promise<Record<string, unknown>> {
   const token = await accessToken()
 
   let response: Response
@@ -115,7 +131,7 @@ export async function askAi(task: AiTask, payload: AiPayload, locale: AiLocale):
         'content-type': 'application/json',
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ task, locale, payload }),
+      body: JSON.stringify(request),
     })
   } catch (cause) {
     throw new AiError('UPSTREAM_ERROR', cause instanceof Error ? cause.message : 'network error')
@@ -126,10 +142,45 @@ export async function askAi(task: AiTask, payload: AiPayload, locale: AiLocale):
   if (!response.ok) {
     throw new AiError(codeFor(response, body), `ai function responded ${response.status}`, response.status)
   }
-
-  const recipe = (body as AiResponse | null)?.recipe
-  if (!isRecipe(recipe)) {
+  if (typeof body !== 'object' || body === null) {
     throw new AiError('UPSTREAM_ERROR', 'malformed response', response.status)
   }
-  return { ...recipe, missing: recipe.missing ?? [] }
+  return body as Record<string, unknown>
+}
+
+function isDetectedItem(value: unknown): value is DetectedItem {
+  if (typeof value !== 'object' || value === null) return false
+  const item = value as Partial<DetectedItem>
+  return (
+    typeof item.name === 'string' &&
+    item.name.length > 0 &&
+    typeof item.quantity === 'number' &&
+    typeof item.unit === 'string' &&
+    (item.expiresOn === null || typeof item.expiresOn === 'string')
+  )
+}
+
+/**
+ * Read the products visible on a photo (`recognize_photo`).
+ *
+ * A single malformed entry fails the whole answer on purpose: the caller shows an
+ * editable list, and inventing a placeholder product would be worse than an error.
+ */
+export async function recognizePhoto(image: PhotoPayload, locale: AiLocale): Promise<DetectedItem[]> {
+  const body = await callAi({ task: 'recognize_photo', locale, payload: { image } })
+  const items = body.items
+  if (!Array.isArray(items) || !items.every(isDetectedItem)) {
+    throw new AiError('UPSTREAM_ERROR', 'malformed response')
+  }
+  return items
+}
+
+/** Read the expiry date printed on a label (`read_label_date`); `null` when unreadable. */
+export async function readLabelDate(image: PhotoPayload, locale: AiLocale): Promise<string | null> {
+  const body = await callAi({ task: 'read_label_date', locale, payload: { image } })
+  const expiresOn = body.expiresOn
+  if (expiresOn !== null && typeof expiresOn !== 'string') {
+    throw new AiError('UPSTREAM_ERROR', 'malformed response')
+  }
+  return expiresOn
 }

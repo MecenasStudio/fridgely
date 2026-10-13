@@ -146,3 +146,113 @@ describe('SettingsView', () => {
     expect(onLanguage).toHaveBeenCalledWith('pl')
   })
 })
+
+describe('SettingsView household', () => {
+  const household = { name: 'Nasz dom', inviteCode: 'abcd1234', memberCount: 2 }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    Reflect.deleteProperty(navigator, 'clipboard')
+  })
+
+  it('copies the invite code and confirms', async () => {
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderView({ household })
+
+    expect(screen.getByText('Household: Nasz dom')).toBeTruthy()
+    expect(screen.getByText('2 people in this household')).toBeTruthy()
+    expect((screen.getByLabelText('Invite code') as HTMLInputElement).value).toBe('abcd1234')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('abcd1234'))
+    expect(await screen.findByRole('status')).toHaveProperty('textContent', ' Copied.')
+  })
+
+  it('selects the code instead when there is no clipboard, without a status claim', async () => {
+    renderView({ household })
+
+    const field = screen.getByLabelText('Invite code') as HTMLInputElement
+    expect(field.readOnly).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      ' Could not copy. The code is selected — copy it by hand.',
+    )
+    expect(field.selectionStart).toBe(0)
+    expect(field.selectionEnd).toBe('abcd1234'.length)
+    expect(screen.queryByText('Copied.')).toBeNull()
+  })
+
+  it('reports a rejected clipboard instead of lying about a copy', async () => {
+    const writeText = vi.fn(async () => {
+      throw new Error('denied')
+    })
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderView({ household })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.queryByText('Copied.')).toBeNull()
+  })
+
+  it('hides the lines it does not know and renders without a household at all', () => {
+    const { unmount } = render(
+      <SettingsView
+        status={noStatus}
+        language="en"
+        household={{ name: null, inviteCode: null, memberCount: null }}
+        onSave={noop}
+        onClear={noop}
+        onLanguage={() => {}}
+      />,
+    )
+    expect(screen.queryByText(/Household:/)).toBeNull()
+    expect(screen.queryByText(/people in this household/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Copy' })).toBeNull()
+    unmount()
+
+    renderView({ household: undefined })
+    expect(screen.queryByRole('button', { name: 'Copy' })).toBeNull()
+    expect(screen.getByLabelText('Claude key')).toBeTruthy()
+  })
+
+  it('shows a singular count in Polish', async () => {
+    await i18n.changeLanguage('pl')
+    const { unmount } = render(
+      <SettingsView
+        status={noStatus}
+        language="pl"
+        household={{ name: 'Dom', inviteCode: 'abcd1234', memberCount: 1 }}
+        onSave={noop}
+        onClear={noop}
+        onLanguage={() => {}}
+      />,
+    )
+    expect(screen.getByText('1 osoba w domu')).toBeTruthy()
+    unmount()
+    await i18n.changeLanguage('en')
+  })
+})
+
+describe('SettingsView theme', () => {
+  it('shows the three choices, marks the current one and reports a change', () => {
+    const onTheme = vi.fn()
+    renderView({ theme: 'dark', onTheme })
+
+    expect(screen.getByRole('radio', { name: 'System' })).toHaveProperty('checked', false)
+    expect(screen.getByRole('radio', { name: 'Light' })).toHaveProperty('checked', false)
+    expect(screen.getByRole('radio', { name: 'Dark' })).toHaveProperty('checked', true)
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Light' }))
+    expect(onTheme).toHaveBeenCalledWith('light')
+  })
+
+  it('hides the theme fieldset when the page does not handle it', () => {
+    renderView({})
+    expect(screen.queryByRole('radio', { name: 'Dark' })).toBeNull()
+  })
+})

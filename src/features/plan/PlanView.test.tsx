@@ -1,4 +1,4 @@
-﻿import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import i18n from '../../i18n'
 import { PlanView } from './PlanView'
 import type { Recipe } from '../../domain/types'
@@ -35,5 +35,215 @@ describe('PlanView', () => {
     rerender(<PlanView days={days} recipes={[]} plan={{}} onSet={async () => {}} onRandomize={onRandomize} />)
     expect((screen.getByRole('button', { name: 'Randomize week' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText('Add some recipes first.')).toBeTruthy()
+  })
+})
+
+describe('PlanView availability', () => {
+  const omelette: Recipe = {
+    id: 'r1',
+    title: 'Omlet',
+    ingredients: [
+      { name: 'jajka', quantity: 3, unit: 'szt' },
+      { name: 'masło', quantity: 1, unit: 'szt' },
+    ],
+    steps: [],
+  }
+
+  it('says everything is in when the fridge covers the recipe', () => {
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[
+          { id: 'a', name: 'Jajka', quantity: 6, unit: 'szt', expiresOn: null },
+          { id: 'b', name: 'masło', quantity: 1, unit: 'szt', expiresOn: null },
+        ]}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+    expect(screen.getByText('Everything is in')).toBeTruthy()
+    expect(screen.queryByText(/Missing:/)).toBeNull()
+  })
+
+  it('counts the missing ingredients and says nothing for empty days', () => {
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[{ id: 'a', name: 'jajka', quantity: 1, unit: 'szt', expiresOn: null }]}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+    // jajka are too few and masło is absent, so two ingredients are missing.
+    expect(screen.getByText('Missing: 2 ingredients')).toBeTruthy()
+    expect(screen.queryByText('Everything is in')).toBeNull()
+  })
+
+  it('treats a missing fridge prop as an empty fridge', () => {
+    render(<PlanView days={days} recipes={[omelette]} plan={{ '2026-10-12': 'r1' }} onSet={async () => {}} onRandomize={async () => {}} />)
+    expect(screen.getByText('Missing: 2 ingredients')).toBeTruthy()
+  })
+})
+
+describe('PlanView week navigation', () => {
+  it('shifts back and forward and returns to this week', () => {
+    const onShiftWeek = vi.fn()
+    const onThisWeek = vi.fn()
+    render(
+      <PlanView
+        days={days}
+        recipes={recipes}
+        plan={{}}
+        weekLabel="Oct 12 – Oct 18, 2026"
+        isCurrentWeek={false}
+        onShiftWeek={onShiftWeek}
+        onThisWeek={onThisWeek}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    expect(screen.getByText('Oct 12 – Oct 18, 2026')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous week' }))
+    expect(onShiftWeek).toHaveBeenCalledWith(-1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next week' }))
+    expect(onShiftWeek).toHaveBeenCalledWith(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'This week' }))
+    expect(onThisWeek).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables "this week" while the current week is shown and hides the bar without handlers', () => {
+    const { unmount } = render(
+      <PlanView
+        days={days}
+        recipes={recipes}
+        plan={{}}
+        weekLabel="Oct 12 – Oct 18, 2026"
+        isCurrentWeek
+        onShiftWeek={() => {}}
+        onThisWeek={() => {}}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+    expect((screen.getByRole('button', { name: 'This week' }) as HTMLButtonElement).disabled).toBe(true)
+    unmount()
+
+    render(<PlanView days={days} recipes={recipes} plan={{}} onSet={async () => {}} onRandomize={async () => {}} />)
+    expect(screen.queryByRole('button', { name: 'Previous week' })).toBeNull()
+  })
+})
+
+describe('PlanView cooking', () => {
+  const omelette: Recipe = {
+    id: 'r1',
+    title: 'Omlet',
+    ingredients: [{ name: 'jajka', quantity: 3, unit: 'szt' }],
+    steps: [],
+  }
+  const fridge = [{ id: 'f1', name: 'jajka', quantity: 6, unit: 'szt', expiresOn: null }]
+
+  it('previews what it will take and only writes after confirming', async () => {
+    const onConsume = vi.fn(async () => {})
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={fridge}
+        onConsume={onConsume}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cooked' }))
+    expect(screen.getByText('I will use from the fridge:')).toBeTruthy()
+    expect(screen.getByText('jajka: 3 szt')).toBeTruthy()
+    expect(onConsume).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    await waitFor(() =>
+      expect(onConsume).toHaveBeenCalledWith({ updates: [{ id: 'f1', newQuantity: 3 }], deletes: [] }),
+    )
+  })
+
+  it('cancels without writing', () => {
+    const onConsume = vi.fn(async () => {})
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={fridge}
+        onConsume={onConsume}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cooked' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(onConsume).not.toHaveBeenCalled()
+    expect(screen.queryByText('I will use from the fridge:')).toBeNull()
+  })
+
+  it('shows the whole row when it will be used up, and alerts on failure', async () => {
+    const onConsume = vi.fn(async () => {
+      throw new Error('update denied')
+    })
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[{ id: 'f1', name: 'jajka', quantity: 2, unit: 'szt', expiresOn: null }]}
+        onConsume={onConsume}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cooked' }))
+    expect(screen.getByText('jajka: 2 szt')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Could not save the fridge changes. Nothing was changed silently — check the fridge and try again.',
+    )
+    expect(screen.queryByText('update denied')).toBeNull()
+    // The preview is still there for another look.
+    expect(screen.getByText('I will use from the fridge:')).toBeTruthy()
+  })
+
+  it('says so when the recipe uses nothing from the fridge', () => {
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[]}
+        onConsume={vi.fn(async () => {})}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cooked' }))
+    expect(screen.getByText('Nothing comes out of the fridge.')).toBeTruthy()
+  })
+
+  it('hides the cooked button when there is no handler', () => {
+    render(<PlanView days={days} recipes={[omelette]} plan={{ '2026-10-12': 'r1' }} onSet={async () => {}} onRandomize={async () => {}} />)
+    expect(screen.queryByRole('button', { name: 'Cooked' })).toBeNull()
   })
 })

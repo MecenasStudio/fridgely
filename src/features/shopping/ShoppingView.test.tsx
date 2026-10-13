@@ -1,15 +1,46 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import i18n from '../../i18n'
 import { ShoppingView } from './ShoppingView'
+import type { ShoppingItem } from './ShoppingView'
 
 const noop = async () => {}
 
-beforeAll(() => i18n.changeLanguage('en'))
+type Handlers = {
+  onToggle?: (id: string, checked: boolean) => Promise<void>
+  onGenerate?: () => Promise<void>
+  onAdd?: (item: { name: string; quantity: number; unit: string }) => Promise<void>
+  onRemove?: (id: string) => Promise<void>
+  onClearChecked?: () => Promise<void>
+  onMoveChecked?: () => Promise<void>
+}
+
+/** Renders the view with every callback stubbed; each test overrides what it needs. */
+function renderView(items: ShoppingItem[], handlers: Handlers = {}) {
+  const props = {
+    items,
+    onToggle: handlers.onToggle ?? vi.fn(noop),
+    onGenerate: handlers.onGenerate ?? vi.fn(noop),
+    onAdd: handlers.onAdd ?? vi.fn(noop),
+    onRemove: handlers.onRemove ?? vi.fn(noop),
+    onClearChecked: handlers.onClearChecked ?? vi.fn(noop),
+    onMoveChecked: handlers.onMoveChecked ?? vi.fn(noop),
+  }
+  render(<ShoppingView {...props} />)
+  return props
+}
+
+const item = (id: string, name: string, checked = false): ShoppingItem => ({
+  id, name, quantity: 1, unit: 'l', checked,
+})
+
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+})
 
 describe('ShoppingView', () => {
   it('shows an empty state and a generate button', () => {
     const onGenerate = vi.fn(async () => {})
-    render(<ShoppingView items={[]} onToggle={noop} onGenerate={onGenerate} onMoveChecked={noop} />)
+    renderView([], { onGenerate })
     expect(screen.getByText('Nothing to buy.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Build list from plan' }))
     expect(onGenerate).toHaveBeenCalled()
@@ -17,14 +48,7 @@ describe('ShoppingView', () => {
 
   it('toggles an item', () => {
     const onToggle = vi.fn(async () => {})
-    render(
-      <ShoppingView
-        items={[{ id: 'a', name: 'milk', quantity: 1, unit: 'l', checked: false }]}
-        onToggle={onToggle}
-        onGenerate={noop}
-        onMoveChecked={noop}
-      />,
-    )
+    renderView([item('a', 'milk')], { onToggle })
     fireEvent.click(screen.getByRole('checkbox'))
     expect(onToggle).toHaveBeenCalledWith('a', true)
   })
@@ -32,39 +56,25 @@ describe('ShoppingView', () => {
   it('shows the move button only when something is checked', () => {
     const { unmount } = render(
       <ShoppingView
-        items={[{ id: 'a', name: 'milk', quantity: 1, unit: 'l', checked: false }]}
+        items={[item('a', 'milk')]}
         onToggle={noop}
         onGenerate={noop}
+        onAdd={noop}
+        onRemove={noop}
+        onClearChecked={noop}
         onMoveChecked={noop}
       />,
     )
     expect(screen.queryByRole('button', { name: 'Move bought items to the fridge' })).toBeNull()
     unmount()
 
-    render(
-      <ShoppingView
-        items={[{ id: 'a', name: 'milk', quantity: 1, unit: 'l', checked: true }]}
-        onToggle={noop}
-        onGenerate={noop}
-        onMoveChecked={noop}
-      />,
-    )
+    renderView([item('a', 'milk', true)])
     expect(screen.getByRole('button', { name: 'Move bought items to the fridge' })).toBeTruthy()
   })
 
   it('moves the checked rows and confirms', async () => {
     const onMoveChecked = vi.fn(async () => {})
-    render(
-      <ShoppingView
-        items={[
-          { id: 'a', name: 'milk', quantity: 1, unit: 'l', checked: true },
-          { id: 'b', name: 'bread', quantity: 1, unit: 'szt', checked: false },
-        ]}
-        onToggle={noop}
-        onGenerate={noop}
-        onMoveChecked={onMoveChecked}
-      />,
-    )
+    renderView([item('a', 'milk', true), item('b', 'bread')], { onMoveChecked })
 
     fireEvent.click(screen.getByRole('button', { name: 'Move bought items to the fridge' }))
     expect(onMoveChecked).toHaveBeenCalledTimes(1)
@@ -76,14 +86,7 @@ describe('ShoppingView', () => {
     const onMoveChecked = vi.fn(async () => {
       throw new Error(raw)
     })
-    render(
-      <ShoppingView
-        items={[{ id: 'a', name: 'milk', quantity: 1, unit: 'l', checked: true }]}
-        onToggle={noop}
-        onGenerate={noop}
-        onMoveChecked={onMoveChecked}
-      />,
-    )
+    renderView([item('a', 'milk', true)], { onMoveChecked })
 
     fireEvent.click(screen.getByRole('button', { name: 'Move bought items to the fridge' }))
 
@@ -93,5 +96,150 @@ describe('ShoppingView', () => {
     // The list is untouched, so the rows and the button are still there.
     expect(screen.getByText(/milk/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Move bought items to the fridge' })).toBeTruthy()
+  })
+})
+
+describe('ShoppingView editing the list', () => {
+  it('adds a hand-written item and clears the form', async () => {
+    const onAdd = vi.fn(async () => {})
+    renderView([], { onAdd })
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: ' Chleb ' } })
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('Unit'), { target: { value: 'szt' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    // The write is awaited before the form is reset, so wait for both.
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith({ name: 'Chleb', quantity: 2, unit: 'szt' }))
+    await waitFor(() => expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe(''))
+    expect((screen.getByLabelText('Quantity') as HTMLInputElement).value).toBe('1')
+  })
+
+  it('refuses an empty name or a zero amount, and accepts a fraction', async () => {
+    const onAdd = vi.fn(async () => {})
+    renderView([], { onAdd })
+
+    const add = screen.getByRole('button', { name: 'Add' })
+    expect(add).toHaveProperty('disabled', true)
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'mleko' } })
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '0' } })
+    fireEvent.click(add)
+    expect(onAdd).not.toHaveBeenCalled()
+
+    // A number input only accepts the dot form; the code still folds a comma defensively.
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '0.5' } })
+    fireEvent.click(add)
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith({ name: 'mleko', quantity: 0.5, unit: 'szt' }))
+  })
+
+  it('removes a single item and clears the checked ones', async () => {
+    const onRemove = vi.fn(async () => {})
+    const onClearChecked = vi.fn(async () => {})
+    renderView([item('a', 'milk'), item('b', 'bread', true), item('c', 'butter', true)], {
+      onRemove,
+      onClearChecked,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove milk' }))
+    await waitFor(() => expect(onRemove).toHaveBeenCalledWith('a'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear checked' }))
+    await waitFor(() => expect(onClearChecked).toHaveBeenCalledTimes(1))
+  })
+
+  it('hides clear and move when nothing is checked', () => {
+    renderView([item('a', 'milk')])
+    expect(screen.queryByRole('button', { name: 'Clear checked' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Move bought items to the fridge' })).toBeNull()
+  })
+
+  it('sinks the checked rows to the bottom, keeping the order inside each group', () => {
+    renderView([
+      item('a', 'milk', true),
+      item('b', 'bread'),
+      item('c', 'butter', true),
+      item('d', 'eggs'),
+    ])
+
+    const order = screen
+      .getAllByRole('listitem')
+      .map((row) => row.textContent?.replace('×', '').trim())
+    expect(order).toEqual(['1 l bread', '1 l eggs', '1 l milk', '1 l butter'])
+  })
+
+  it('reports a failed list operation without a raw message', async () => {
+    const onRemove = vi.fn(async () => {
+      throw new Error('delete denied')
+    })
+    renderView([item('a', 'milk')], { onRemove })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove milk' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('Could not save the change to the list. Please try again.')
+    expect(screen.queryByText('delete denied')).toBeNull()
+  })
+})
+
+describe('ShoppingView sharing the list', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    Reflect.deleteProperty(navigator, 'clipboard')
+    Reflect.deleteProperty(navigator, 'share')
+  })
+
+  it('shares through the share sheet when the browser has one', async () => {
+    const share = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    renderView([item('a', 'milk'), item('b', 'bread', true)])
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the list' }))
+
+    await waitFor(() => expect(share).toHaveBeenCalled())
+    expect(share).toHaveBeenCalledWith({ title: 'Shopping', text: '- 1 l milk' })
+    // The clipboard is the fallback, not the first choice.
+    expect(writeText).not.toHaveBeenCalled()
+    expect(await screen.findByText('List copied.')).toBeTruthy()
+  })
+
+  it('falls back to the clipboard', async () => {
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    renderView([item('a', 'milk', true), item('b', 'bread')])
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the list' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('- 1 l bread'))
+    expect(await screen.findByText('List copied.')).toBeTruthy()
+  })
+
+  it('alerts when neither way exists', async () => {
+    renderView([item('a', 'milk')])
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the list' }))
+
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Could not copy the list. Select the items and copy them by hand.',
+    )
+    expect(screen.queryByText('List copied.')).toBeNull()
+  })
+
+  it('alerts when the share sheet is dismissed and disables the button with nothing to buy', async () => {
+    const share = vi.fn(async () => {
+      throw new Error('cancelled')
+    })
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+    renderView([item('a', 'milk')])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the list' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+
+    // Everything is already checked off: there is nothing left to send.
+    renderView([item('a', 'milk', true)])
+    const buttons = screen.getAllByRole('button', { name: 'Copy the list' })
+    expect(buttons[buttons.length - 1]).toHaveProperty('disabled', true)
   })
 })

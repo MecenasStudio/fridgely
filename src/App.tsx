@@ -39,9 +39,8 @@ function Home({ userId }: { userId: string }) {
       {tab === 'plan' && <PlanPage householdId={id} />}
       {tab === 'shopping' && <ShoppingPage householdId={id} />}
       {tab === 'ai' && <AiPage householdId={id} />}
-      {tab === 'settings' && <SettingsPage />}
+      {tab === 'settings' && <SettingsPage userId={userId} />}
       <footer>
-        <p>{t('household.inviteCode', { code: h.inviteCode })}</p>
         <button type="button" onClick={() => supabase.auth.signOut()}>{t('auth.signOut')}</button>
       </footer>
     </main>

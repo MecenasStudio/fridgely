@@ -14,3 +14,13 @@ export function parseIngredient(line: string): Ingredient | null {
 
   return { name: text, quantity: 1, unit: 'szt' }
 }
+
+/**
+ * Inverse of `parseIngredient`: "0.5 l mleko", with the `szt` unit left out so that
+ * `parseIngredient(formatIngredient(i))` round-trips (it defaults a missing unit to `szt`).
+ * Decimal fractions keep the dot, because that is what `parseIngredient` reads back.
+ */
+export function formatIngredient(ingredient: Ingredient): string {
+  const { name, quantity, unit } = ingredient
+  return unit === 'szt' ? `${quantity} ${name}` : `${quantity} ${unit} ${name}`
+}

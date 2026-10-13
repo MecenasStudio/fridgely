@@ -5,14 +5,25 @@ import type { ShoppingItem } from './ShoppingView'
 
 export function useShopping(householdId: string) {
   const [items, setItems] = useState<ShoppingItem[]>([])
+  // True until the first load settles, so the view does not flash "nothing to buy".
+  const [loading, setLoading] = useState(true)
+  // True when the last load failed; the view keeps showing whatever it had before.
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('shopping_items')
       .select('id, name, quantity, unit, checked')
       .eq('household_id', householdId)
       .order('created_at')
+    if (loadError) {
+      setError(true)
+      setLoading(false)
+      return
+    }
+    setError(false)
     setItems(((data ?? []) as ShoppingItem[]).map((i) => ({ ...i, quantity: Number(i.quantity) })))
+    setLoading(false)
   }, [householdId])
 
   useEffect(() => {
@@ -56,7 +67,15 @@ export function useShopping(householdId: string) {
     if (ids.length === 0) return
     const del = await supabase.from('shopping_items').delete().in('id', ids)
     if (del.error) throw del.error
+    setItems((current) => current.filter((item) => !ids.includes(item.id)))
   }
 
-  return { items, toggle, replaceAll, addMany, deleteByIds }
+  /** One row: the "remove" button on a hand-written list must not need a reload to show. */
+  const remove = async (id: string) => {
+    const del = await supabase.from('shopping_items').delete().eq('id', id)
+    if (del.error) throw del.error
+    setItems((current) => current.filter((item) => item.id !== id))
+  }
+
+  return { items, loading, error, reload: load, toggle, replaceAll, addMany, deleteByIds, remove }
 }

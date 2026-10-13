@@ -65,6 +65,19 @@ async function getUserKey(userId: string): Promise<StoredKey | null> {
   return { ciphertext: data.anthropic_key_encrypted as string, last4: (data.key_last4 as string) ?? '' }
 }
 
+/**
+ * Content blocks for one message. A vision call puts the image first, then the text
+ * instruction; the base64 never leaves this request body (it is not logged).
+ */
+function messageContent(call: ClaudeCall): { type: string; [key: string]: unknown }[] {
+  const text = { type: 'text', text: call.prompt }
+  if (!call.image) return [text]
+  return [
+    { type: 'image', source: { type: 'base64', media_type: call.image.mediaType, data: call.image.data } },
+    text,
+  ]
+}
+
 async function callClaude(call: ClaudeCall): Promise<ClaudeResult> {
   const response = await fetch(ANTHROPIC_URL, {
     method: 'POST',
@@ -77,7 +90,7 @@ async function callClaude(call: ClaudeCall): Promise<ClaudeResult> {
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system: call.system,
-      messages: [{ role: 'user', content: call.prompt }],
+      messages: [{ role: 'user', content: messageContent(call) }],
     }),
   })
 

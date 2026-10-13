@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { expiryStatus, sortByExpiry } from '../../domain/fridge'
+import { matchesQuery } from '../../domain/search'
 import type { FridgeItem } from '../../domain/types'
+import { formatDate } from '../../lib/format'
 import { FridgeItemForm, type NewFridgeItem } from './FridgeItemForm'
 import { BarcodeAdd } from './BarcodeAdd'
+import { PhotoImport, ReadDateButton } from './PhotoImport'
+import type { ReadDate, Recognize } from './PhotoImport'
+import { LoadError } from '../common/LoadError'
 
 type Props = {
   items: FridgeItem[]
@@ -11,6 +16,16 @@ type Props = {
   onAdd: (item: NewFridgeItem) => Promise<void>
   onUpdate: (id: string, patch: Partial<NewFridgeItem>) => Promise<void>
   onRemove: (id: string) => Promise<void>
+  /** Photo tasks from the AI screen; the page injects the real client. */
+  locale?: 'pl' | 'en'
+  recognize?: Recognize
+  readDate?: ReadDate
+  /** True until the first load settles: shows "Loading…" instead of the empty state. */
+  loading?: boolean
+  /** True when the last load failed. */
+  error?: boolean
+  /** Retries the failing load. */
+  onReload?: () => void
 }
 
 type Update = (id: string, patch: Partial<NewFridgeItem>) => Promise<void>
@@ -54,23 +69,51 @@ function QuantityInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update 
 }
 
 /** Expiry editor, also for products that already have a date; clearing it stores null. */
-function ExpiryInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update }) {
+function ExpiryInput({ item, onUpdate, locale }: { item: FridgeItem; onUpdate: Update; locale: string }) {
   const { t } = useTranslation()
 
   return (
-    <input
-      type="date"
-      aria-label={t('fridge.expiresOnOf', { name: item.name })}
-      value={item.expiresOn ?? ''}
-      onChange={(e) => void onUpdate(item.id, { expiresOn: e.target.value || null })}
-    />
+    <>
+      <input
+        type="date"
+        aria-label={t('fridge.expiresOnOf', { name: item.name })}
+        value={item.expiresOn ?? ''}
+        onChange={(e) => void onUpdate(item.id, { expiresOn: e.target.value || null })}
+      />{' '}
+      {/* The field itself stays ISO; this is the human-readable form of the same date. */}
+      {item.expiresOn && <span>{formatDate(item.expiresOn, locale)}</span>}
+    </>
   )
 }
 
-export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
+export function FridgeView({
+  items,
+  today,
+  onAdd,
+  onUpdate,
+  onRemove,
+  locale = 'en',
+  recognize,
+  readDate,
+  loading = false,
+  error = false,
+  onReload,
+}: Props) {
   const { t } = useTranslation()
   const sorted = sortByExpiry(items)
   const [failedId, setFailedId] = useState<string | null>(null)
+  const [dateTarget, setDateTarget] = useState<{ id: string; name: string } | null>(null)
+  const [query, setQuery] = useState('')
+  const visible = sorted.filter((item) => matchesQuery(item.name, query))
+
+  if (loading) {
+    return (
+      <section>
+        <h2>{t('nav.fridge')}</h2>
+        <p role="status">{t('common.loading')}</p>
+      </section>
+    )
+  }
 
   // Every write goes through here, so a failed update always shows up on that row.
   async function update(id: string, patch: Partial<NewFridgeItem>) {
@@ -85,13 +128,39 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
   return (
     <section>
       <h2>{t('nav.fridge')}</h2>
+      <LoadError error={error} onRetry={onReload} />
       <FridgeItemForm onAdd={onAdd} />
       <BarcodeAdd onAdd={onAdd} />
+      {recognize && readDate && (
+        <PhotoImport
+          locale={locale}
+          onAdd={onAdd}
+          recognize={recognize}
+          readDate={readDate}
+          onUpdateDate={(id, expiresOn) => update(id, { expiresOn })}
+          dateTarget={dateTarget}
+          onDateDone={() => setDateTarget(null)}
+        />
+      )}
       {sorted.length === 0 ? (
         <p>{t('fridge.empty')}</p>
       ) : (
-        <ul>
-          {sorted.map((item) => {
+        <>
+          <label>
+            {t('fridge.search')}{' '}
+            <input
+              type="search"
+              aria-label={t('fridge.search')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>{' '}
+          <span role="status">{t('fridge.found', { count: visible.length })}</span>
+          {visible.length === 0 ? (
+            <p>{t('fridge.noMatches')}</p>
+          ) : (
+            <ul>
+              {visible.map((item) => {
             const status = expiryStatus(item, today)
             return (
               <li key={item.id} data-status={status}>
@@ -99,7 +168,10 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
                 <span>{item.quantity} {item.unit}</span>{' '}
                 <QuantityInput item={item} onUpdate={update} />{' '}
                 {status === 'unknown' && <>{t('fridge.addExpiry')} </>}
-                <ExpiryInput item={item} onUpdate={update} />{' '}
+                <ExpiryInput item={item} onUpdate={update} locale={locale} />{' '}
+                {readDate && (
+                  <ReadDateButton name={item.name} onClick={() => setDateTarget({ id: item.id, name: item.name })} />
+                )}{' '}
                 {status === 'expired' && <strong>{t('fridge.expired')} </strong>}
                 {status === 'soon' && <strong>{t('fridge.soon')} </strong>}
                 <button type="button" onClick={() => onRemove(item.id)} aria-label={`${t('fridge.remove')} ${item.name}`}>×</button>
@@ -107,7 +179,9 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
               </li>
             )
           })}
-        </ul>
+            </ul>
+          )}
+        </>
       )}
     </section>
   )

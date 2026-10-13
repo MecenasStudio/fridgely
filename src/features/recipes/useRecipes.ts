@@ -6,14 +6,25 @@ type Row = { id: string; title: string; ingredients: Ingredient[]; steps: string
 
 export function useRecipes(householdId: string) {
   const [recipes, setRecipes] = useState<Recipe[]>([])
+  // True until the first load settles, so the view does not flash its empty state.
+  const [loading, setLoading] = useState(true)
+  // True when the last load failed; the view keeps showing whatever it had before.
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('recipes')
       .select('id, title, ingredients, steps')
       .eq('household_id', householdId)
       .order('created_at')
+    if (loadError) {
+      setError(true)
+      setLoading(false)
+      return
+    }
+    setError(false)
     setRecipes((data as Row[] | null) ?? [])
+    setLoading(false)
   }, [householdId])
 
   useEffect(() => {
@@ -37,6 +48,16 @@ export function useRecipes(householdId: string) {
     const { error } = await supabase.from('recipes').delete().eq('id', id)
     if (error) throw error
   }
+  const update = async (id: string, patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => {
+    const { error } = await supabase
+      .from('recipes')
+      .update({ title: patch.title, ingredients: patch.ingredients, steps: patch.steps })
+      .eq('id', id)
+    if (error) throw error
+    setRecipes((current) =>
+      current.map((recipe) => (recipe.id === id ? { ...recipe, ...patch } : recipe)),
+    )
+  }
 
-  return { recipes, add, del }
+  return { recipes, loading, error, reload: load, add, del, update }
 }
