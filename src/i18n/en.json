@@ -119,6 +119,15 @@
                      "keyRejected":  "Claude rejected this key. Please check that it is correct.",
                      "saveFailed":  "Could not save the key. Please try again.",
                      "clearFailed":  "Could not remove the key. Please try again.",
+                     "householdName":  "Household: {{name}}",
+                     "memberCount_one":  "{{count}} person in this household",
+                     "memberCount_few":  "{{count}} people in this household",
+                     "memberCount_many":  "{{count}} people in this household",
+                     "memberCount_other":  "{{count}} people in this household",
+                     "inviteCode":  "Invite code",
+                     "copy":  "Copy",
+                     "copied":  "Copied.",
+                     "copyFailed":  "Could not copy. The code is selected — copy it by hand.",
                      "language":  "Language"
                  },
     "photo":  {

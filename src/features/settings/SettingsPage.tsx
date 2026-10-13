@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { clearKey, getKeyStatus, saveKey } from '../../lib/apiKey'
+import { useHousehold } from '../household/useHousehold'
 import { SettingsView } from './SettingsView'
 
-export function SettingsPage() {
+export function SettingsPage({ userId }: { userId: string }) {
   const { i18n } = useTranslation()
   const [status, setStatus] = useState<{ hasKey: boolean; last4: string | null }>({ hasKey: false, last4: null })
+  const household = useHousehold(userId)
 
   async function refresh() {
     setStatus(await getKeyStatus())
@@ -19,6 +21,7 @@ export function SettingsPage() {
     <SettingsView
       status={status}
       language={i18n.resolvedLanguage === 'pl' ? 'pl' : 'en'}
+      household={{ name: household.name, inviteCode: household.inviteCode, memberCount: household.memberCount }}
       onSave={async (key) => {
         await saveKey(key)
         await refresh()

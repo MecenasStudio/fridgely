@@ -119,6 +119,15 @@
                      "keyRejected":  "Claude nie przyjął tego klucza. Sprawdź, czy klucz jest poprawny.",
                      "saveFailed":  "Nie udało się zapisać klucza. Spróbuj ponownie.",
                      "clearFailed":  "Nie udało się usunąć klucza. Spróbuj ponownie.",
+                     "householdName":  "Dom: {{name}}",
+                     "memberCount_one":  "{{count}} osoba w domu",
+                     "memberCount_few":  "{{count}} osoby w domu",
+                     "memberCount_many":  "{{count}} osób w domu",
+                     "memberCount_other":  "{{count}} osoby w domu",
+                     "inviteCode":  "Kod zaproszenia",
+                     "copy":  "Kopiuj",
+                     "copied":  "Skopiowane.",
+                     "copyFailed":  "Nie udało się skopiować. Kod jest zaznaczony — skopiuj go ręcznie.",
                      "language":  "Język"
                  },
     "photo":  {
