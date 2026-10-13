@@ -9,6 +9,8 @@ type Props = {
   /** Chosen theme; `system` follows the device. */
   theme?: 'system' | 'light' | 'dark'
   onTheme?(theme: 'system' | 'light' | 'dark'): void
+  /** Downloads the household data; hidden when the page does not provide it. */
+  onExport?(): void
   onSave(key: string): Promise<void>
   onClear(): Promise<void>
   onLanguage(lang: 'pl' | 'en'): void
@@ -26,7 +28,7 @@ function errorCodeOf(error: unknown): string | undefined {
   return typeof code === 'string' ? code : undefined
 }
 
-export function SettingsView({ status, language, household, theme = 'system', onTheme, onSave, onClear, onLanguage }: Props) {
+export function SettingsView({ status, language, household, theme = 'system', onTheme, onExport, onSave, onClear, onLanguage }: Props) {
   const { t } = useTranslation()
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
@@ -179,6 +181,15 @@ export function SettingsView({ status, language, household, theme = 'system', on
             </label>
           ))}
         </fieldset>
+      )}
+
+      {onExport && (
+        <p>
+          <button type="button" onClick={() => onExport()}>
+            {t('settings.export')}
+          </button>{' '}
+          {t('settings.exportHint')}
+        </p>
       )}
     </section>
   )

@@ -256,3 +256,19 @@ describe('SettingsView theme', () => {
     expect(screen.queryByRole('radio', { name: 'Dark' })).toBeNull()
   })
 })
+
+describe('SettingsView export', () => {
+  it('offers the download and reports the click', () => {
+    const onExport = vi.fn()
+    renderView({ onExport })
+
+    expect(screen.getByText(/Saves your recipes, fridge/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Download my data' }))
+    expect(onExport).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the download when the page does not provide it', () => {
+    renderView({})
+    expect(screen.queryByRole('button', { name: 'Download my data' })).toBeNull()
+  })
+})

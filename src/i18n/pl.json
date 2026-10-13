@@ -187,6 +187,8 @@
                      "theme_system":  "Systemowy",
                      "theme_light":  "Jasny",
                      "theme_dark":  "Ciemny",
+                     "export":  "Pobierz moje dane",
+                     "exportHint":  "Zapisze przepisy, lodówkę, listę zakupów i plan tygodnia jako plik JSON.",
                      "language":  "Język"
                  },
     "photo":  {
