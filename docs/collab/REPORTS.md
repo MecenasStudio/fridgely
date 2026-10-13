@@ -2,6 +2,220 @@
 
 Nowe wpisy dodawaj na górze, według szablonu z `docs/collab/README.md`.
 
+## Podsumowanie paczki zadań 40–51 (na górze, dla przeglądu)  —  2026-10-12
+
+- **Zrobione i gotowe do przeglądu: 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51** — dwanaście zadań, dwanaście commitów (`8217125` … `dffd6d3`).
+- **BLOCKED: brak.** Nic nie wymagało zmiany bazy, funkcji serwerowej ani nowej zależności.
+- **Stan na końcu:** `npm test` → `Test Files 36 passed (36)` / `Tests 336 passed (336)`; `npm run build` → `tsc --noEmit` bez błędów + `vite build` OK. Na początku paczki było 30 plików testowych i 284 testy.
+- **Zakres:** tylko pliki z sekcji `Files` poszczególnych zadań (plus `src/domain/validate.ts`/`limits.ts`/`export.ts` i `src/lib/realtime.ts`/`useOnline.ts`, wszystkie wymienione wprost w zleceniach). `supabase/`, `package.json`, `package-lock.json`, `.env*`, `docs/superpowers/` nietknięte, `git pull` był `Already up to date`, żadnego pusha ani merge.
+- **Znalezione i naprawione przy okazji:** (1) alert „Ugotowane" renderował się przy wszystkich siedmiu dniach zamiast przy jednym (zadanie 41) — poprawione, bo bez tego test nie przechodził i był to prawdziwy błąd widoku; (2) sklejona linia `function RecipeChip(...) {  const {...` w `PlanView.tsx` (zadanie 34).
+- **Dwie wpadki procesowe, do wiadomości:** przy zadaniu 41 i 45 zapisywałem pliki przez PowerShell (`Set-Content`/`WriteAllText`), co zamieniło kodowanie `src/i18n/pl.json` i `src/features/ai/AiPanel.test.tsx` na stronę kodową Windows i zniszczyło polskie znaki. Oba pliki przywróciłem z gita i poprawki zrobiłem ponownie narzędziami do edycji; w commitach nie ma uszkodzonego kodowania (testy i18n i pl przechodzą). Lekcja: plików z tekstem roboczym nie pisać przez PowerShell.
+- **Do decyzji w przeglądzie:** (1) `matchesQuery` z paczki 26–39 nadal działa na podciągach — nie ruszałem go, bo zadanie 40–51 tego nie obejmowało; (2) `formatShoppingList` i `buildExport` przyjmują `locale`, którego nie używają (tak było w zleceniach); (3) przy „Ugotowane" podgląd jest liczony z migawki, a zgodność sprawdzana po `id`, więc zmiana kolejności wierszy przez Realtime nie przerywa zapisu.
+
+## Zadanie 51: CHANGELOG i dokumentacja  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `dffd6d3cb4118c3e92b66e176f8ecd53adc23d87`
+Zmienione pliki: `CHANGELOG.md` (nowy), `docs/ARCHITECTURE.md`, `README.md`
+
+Co zrobiłem: `CHANGELOG.md` opisuje wersję `0.1.0` z datą 2026-10-12 w trzech sekcjach (Dodano / Zmieniono / Naprawiono), w skrócie po paczkach 1–51 — szkielet i dane, lodówka, przepisy i plan, lista zakupów, AI/BYOK, ustawienia i reszta, a w „Naprawiono" także regresje z tej paczki (filtr Realtime, podwójne odejmowanie, wiersze `local-N`, wstrzykiwanie nazwy do promptu, połykane błędy, mylące „pusta lista" przy błędzie wczytywania, alert przy siedmiu dniach). W `docs/ARCHITECTURE.md` dopisałem `realtime.ts`, `validate.ts`, `limits.ts`, `ErrorBoundary`, `useOnline.ts`, `format.ts`, `export.ts` oraz dwie zasady: „jedno miejsce na filtr i na stałe" i „walidacja jest wspólna"; zaktualizowałem opis Realtime (dławienie, cleanup) i wierszy `local-N`. W `README.md` (PL i EN) doszła sekcja o eksporcie danych i prywatności.
+
+Dowód:
+- `npm test` → `Test Files 36 passed (36)` / `Tests 336 passed (336)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 3.95s`.
+- `Select-String CHANGELOG.md,README.md,docs/ARCHITECTURE.md -Pattern 'sk-ant-[A-Za-z0-9]|eyJ[A-Za-z0-9]|[a-z]{16}\.supabase\.co'` → 0 trafień: brak kluczy, tokenów i prawdziwych adresów projektu.
+
+Decyzje własne: datę wersji wpisałem na sztywno (2026-10-12, data paczki), a nie z `new Date()`, żeby plik był deterministyczny. W changelogu nie wymieniam każdego commita — to dokument dla człowieka, nie dziennik. Nie zmieniałem istniejących sekcji README poza dopisaniem nowej.
+
+Pytania / blockery: brak.
+
+## Zadanie 50: Stałe w jednym miejscu  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `de21114f8c7d793d18542dde24873e8079874868`
+Zmienione pliki: `src/domain/limits.ts` (nowy) + `limits.test.ts`, `src/domain/fridge.ts`, `src/domain/validate.ts`
+
+Co zrobiłem: `limits.ts` eksportuje `MAX_NAME_LENGTH = 100`, `MAX_UNIT_LENGTH = 20`, `MAX_QUANTITY = 100000`, `MAX_PHOTO_ITEMS = 50`, `SOON_DAYS = 3`. `fridge.ts` importuje `SOON_DAYS` zamiast trzymać własną stałą, a `validate.ts` bierze z `limits.ts` wszystkie trzy limity (jego własne `NAME_MAX`/`UNIT_MAX`/`QUANTITY_MAX` to teraz aliasy, więc istniejące odwołania działają), z komentarzem wskazującym na `supabase/functions/ai/handler.ts`, który waliduje te same pola. Zachowanie bez zmian.
+
+Dowód:
+- `npm test` → `Test Files 36 passed (36)` / `Tests 336 passed (336)`; `✓ src/domain/limits.test.ts (3 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 3.21s`.
+- Testy pilnują wartości (zmiana wymaga świadomej zmiany testu), tego, że `expiryStatus` dalej daje `soon` dla 3 dni i `ok` dla 4 (także licząc od `SOON_DAYS`, nie od literału) oraz że `validateItem` odrzuca `101` znaków, jednostkę `21` znaków i ilość `100001`, a przyjmuje wartości graniczne.
+
+Decyzje własne: `MAX_PHOTO_ITEMS` znalazło się w `limits.ts`, mimo że w tej chwili używa go tylko serwer (klient nie tnie listy) — trzymanie wszystkich limitów razem było wprost w zleceniu, a stała jest udokumentowana komentarzem. Aliasy `NAME_MAX` itd. zostawiłem, żeby nie ruszać `validate.test.ts` i ewentualnych przyszłych odwołań.
+
+Pytania / blockery: brak.
+
+## Zadanie 49: Informacja o prywatności  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `18315f70dbbb1afa864a1fc2e2403f9e0996348a`
+Zmienione pliki: `src/features/settings/SettingsView.tsx` + test, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: w Ustawieniach jest sekcja „Prywatność" z czterema punktami, wyłącznie o tym, co robi kod: dane domu są w bazie Supabase i widoczne dla członków domu; klucz Claude jest przechowywany zaszyfrowany po stronie serwera i nigdy nie wraca do przeglądarki w całości (widać tylko końcówkę); zdjęcia są najpierw zmniejszane w przeglądarce, potem wysyłane przez funkcję serwerową do Anthropic razem z kluczem użytkownika i Fridgely ich nie zapisuje; kody kreskowe są sprawdzane w Open Food Facts. Żadnych obietnic prawnych ani słowa „RODO".
+
+Dowód:
+- `npm test` → `Test Files 35 passed (35)` / `Tests 333 passed (333)`; `✓ src/features/settings/SettingsView.test.tsx (20 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 3.54s`.
+- Testy: nagłówek i cztery zdania po angielsku, wersja polska po `changeLanguage('pl')` (nagłówek „Prywatność", zdanie o szyfrowaniu po stronie serwera, wzmianka o Open Food Facts), brak słów „RODO"/„GDPR" w treści, co najmniej cztery pozycje listy.
+
+Decyzje własne: sekcja jest w `SettingsView` i renderuje się zawsze (bez propsa), bo to informacja, a nie funkcja — nie ma czego ukrywać w testach. Użyłem listy `ul`, a nie akapitów: cztery krótkie fakty czyta się szybciej. Nie dodawałem linków do polityki, bo takiej strony nie ma i nie chcę obiecywać czegoś, czego projekt nie ma.
+
+Pytania / blockery: brak.
+
+## Zadanie 48: Eksport danych domu  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `16b4d82bde5a4e7a83d6e4072dfb3826c83a3455`
+Zmienione pliki: `src/domain/export.ts` (nowy) + `export.test.ts`, `src/features/settings/SettingsView.tsx` + test, `SettingsPage.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `buildExport({ recipes, fridge, shoppingList, plan }, now)` zwraca JSON z polami `version` (1), `exportedAt` (ISO), `recipes`, `fridge`, `shoppingList`, `plan`, a `exportFileName()` proponuje `fridgely-RRRR-MM-DD.json`. W Ustawieniach jest przycisk „Pobierz moje dane", który składa dokument z hooków (`useRecipes`, `useFridge`, `useShopping`, `useMealPlan` dla bieżącego tygodnia), tworzy `Blob`, pobiera przez tymczasowy link i **zwalnia** `URL.revokeObjectURL` w `finally`. W pliku nie ma klucza, jego końcówki, e-maila ani identyfikatorów użytkowników.
+
+Dowód:
+- `npm test` → `Test Files 35 passed (35)` / `Tests 331 passed (331)`; w tym `✓ src/domain/export.test.ts (6 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 579ms`.
+- Testy: dokładny kształt i wersja, polskie znaki bez uszkodzeń („Żurek z żółcią" przechodzi przez serializację), `JSON.parse` pustej rodziny daje puste tablice, brak pól wrażliwych — test przeszukuje **cały serializowany tekst** pod kątem `apiKey`, `anthropic`, `last4`, `email`, `user_id`, `userId`, `password`, `token` — oraz brak mutacji wejścia; osobny test nazwy pliku. W widoku: przycisk woła `onExport`, a bez propsa się nie pokazuje.
+
+Decyzje własne: eksport obejmuje plan **bieżącego tygodnia** (ten sam zakres, co `useMealPlan` w innych ekranach), a nie całą historię — inaczej trzeba by dopisać nowe zapytanie do bazy, czego zlecenie nie przewidywało. `exportedAt` jest wstrzykiwany (`now`), więc dokument jest deterministyczny w testach. `ExportIngredient` w `export.ts` to alias eksportowany dla wygody; nie jest używany w kodzie.
+
+Pytania / blockery: brak.
+
+## Zadanie 47: Testy własności dla logiki domenowej  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, brak własnego commita — patrz „Decyzje własne"
+Zmienione pliki: `src/domain/properties.test.ts` (nowy)
+
+Co zrobiłem: plik testów własności bez nowych bibliotek: 500 losowych przypadków na własność, generowanych tym samym ziarnowym generatorem co w `plan.test.ts` (stałe ziarno, więc kontrprzykład jest powtarzalny). Sprawdzane własności: `buildShoppingList` nigdy nie zwraca ilości `<= 0`, jest niezależne od kolejności przepisów i lodówki (porównanie po posortowanej kopii) i nie rośnie po dodaniu produktu do lodówki; `consumePlan` nie schodzi poniżej zera, nie raportuje tego samego wiersza dwa razy, nie rusza wierszy innych nazw/jednostek i nigdy nie odejmuje więcej, niż przepis wymaga (suma na parę nazwa+jednostka); `findMergeTarget` jest symetryczne względem wielkości liter i spacji, a inna jednostka lub data nie pasuje; `pickWeek` zwraca zawsze 7 elementów, każdy z wejścia albo `null`, a przy pustej liście same `null`; `weekDays`/`shiftWeek` dają kolejne dni i wracają do początku po `+7/-7`; `purchasedToFridge` zachowuje dokładnie odhaczone wiersze z `expiresOn: null` i znormalizowaną nazwą; `validateItem` przyjmuje własne znormalizowane wyjście bez zmian.
+
+Dowód:
+- `npm test` (po tym zadaniu, razem z zadaniem 48 w jednym przebiegu) → `Test Files 35 passed (35)` / `Tests 331 passed (331)`; sam plik: `✓ src/domain/properties.test.ts (10 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów.
+- Testy nie znalazły błędów w kodzie produkcyjnym, więc nie było czego poprawiać.
+
+Decyzje własne — **odstępstwo od zlecenia do wyjaśnienia**: zlecenie mówiło „bez zmian w kodzie produkcyjnym, chyba że test ujawni błąd: opisz w raporcie i popraw minimalnie **osobnym commitem**", ale nie dało temu zadaniu własnego commita. Testy nic nie ujawniły, więc zgodnie z poleceniem „jeden commit na zadanie" nie tworzyłem pustego commita — plik `properties.test.ts` wszedł do commita zadania 48 (`16b4d82`). Jeśli wolisz osobny commit, mogę go wydzielić, ale bez zmiany treści wymagałoby to przepisania historii. Poza tym: generuję nazwy z polskimi znakami („żółć", „zolc"), żeby własności dotyczyły też normalizacji; ilości są zaokrąglane do 3 miejsc, żeby porównania sum nie łapały szumu zmiennoprzecinkowego.
+
+Pytania / blockery: brak, poza powyższą uwagą o commicie.
+
+## Zadanie 46: Dostępność nawigacji  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `be31eda221f664f5e26a6e8a9c4fa1176c1eded2`
+Zmienione pliki: `src/App.tsx`, `src/App.test.tsx`, `src/styles.css`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: link „Przejdź do treści" (`common.skipToContent`) jest pierwszym elementem w DOM i prowadzi do `#content`; `main` ma `id="content"` i `tabIndex={-1}`, więc da się go sfokusować programowo. Aktywna zakładka używa `aria-current="page"` zamiast `aria-pressed` (sprawdziłem: żaden istniejący test nie wymagał `aria-pressed`). Po zmianie zakładki fokus przenosi się na `main` (`switchTab`), więc klawiatura nie zostaje na przycisku zakładki. W `styles.css` doszła tylko reguła `.skip-link` (ukryty poza ekranem, widoczny po `:focus`).
+
+Dowód:
+- `npm test` → `Test Files 33 passed (33)` / `Tests 313 passed (313)`; `✓ src/App.test.tsx (8 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.94s`.
+- Testy: link jest pierwszy w kolejności elementów fokusowalnych i wskazuje `#content`; `main` ma `tabindex="-1"`; `aria-current="page"` jest tylko na aktywnej zakładce; po kliknięciu „Recipes" `document.activeElement` to `main`, a `aria-current` przenosi się na „Recipes".
+
+Decyzje własne: fokus trafia na `main`, a nie na `h2` sekcji — nagłówek należy do widoku, a widoki są czyste i nie mają referencji; `main` jest kontenerem treści, więc czytnik ekranu odczyta od niego dalej. Klucz tłumaczenia wylądował w `common.*`, bo dotyczy powłoki, nie zakładek.
+
+Pytania / blockery: brak.
+
+## Zadanie 45: Brak połączenia  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `ccdf191ee84af32d19a4d9b55bd4d04bbe2cb207`
+Zmienione pliki: `src/lib/useOnline.ts` (nowy) + `useOnline.test.ts`, `src/App.tsx`, `src/App.test.tsx`, `src/features/ai/AiPanel.tsx` + `AiPanel.test.tsx` + `AiPage.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `useOnline()` czyta `navigator.onLine` i słucha zdarzeń `online`/`offline` (sprząta nasłuch przy odmontowaniu; brak `navigator.onLine` traktuje jak połączony). Gdy jest offline, w `App` nad treścią pojawia się pasek `role="status"` „Brak połączenia. Zmiany nie zostaną zapisane.", a `AiPanel` dostaje `online={false}`: oba przyciski AI są wyłączone i widać powód („Brak połączenia. Przyciski AI są wyłączone."). Po powrocie sieci pasek znika.
+
+Dowód:
+- `npm test` → `Test Files 33 passed (33)` / `Tests 311 passed (311)`; `✓ src/lib/useOnline.test.ts (4 tests)` i `✓ src/App.test.tsx (6 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 3.41s`.
+- Testy: start z `navigator.onLine = false`, reakcja na `offline` i `online`, brak nasłuchu po odmontowaniu, brak `onLine` = połączony; w `App` pasek pojawia się i znika po zdarzeniu `online`; w `AiPanel` przy `online: false` przyciski są wyłączone, komunikat widoczny i `ask` nie jest wołane.
+
+Decyzje własne: `online` w `AiPanel` jest opcjonalne z domyślną wartością `true`, więc istniejące testy panelu nie wymagały zmian poza nowym przypadkiem. `useOnline` woła odczyt także w efekcie, bo `navigator.onLine` może się zmienić między pierwszym renderem a montażem. Nie blokowałem niczego poza AI — reszta zapisów i tak trafi w błąd, który jest już widoczny w `role="alert"` (zadanie 35), a wyłączanie całego interfejsu byłoby gorsze.
+
+Pytania / blockery: brak.
+
+## Zadanie 44: Granica błędów aplikacji  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `d8000f87936e1fa36b5d5ea06fe22ff70847819c`
+Zmienione pliki: `src/features/common/ErrorBoundary.tsx` (nowy) + `ErrorBoundary.test.tsx`, `src/App.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: klasowy `ErrorBoundary` z `getDerivedStateFromError` pokazuje zamiast pustej strony `role="alert"` „Coś poszło nie tak." i przycisk „Spróbuj ponownie", który resetuje stan błędu i renderuje dzieci ponownie. Treść błędu i stos **nie są** przechowywane ani wyświetlane — w stanie jest tylko boolean. W `App.tsx` zawartość zakładek jest opakowana w `<ErrorBoundary key={tab}>`, więc zmiana zakładki sama resetuje granicę.
+
+Dowód:
+- `npm test` → `Test Files 32 passed (32)` / `Tests 305 passed (305)`; `✓ src/features/common/ErrorBoundary.test.tsx (3 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.25s`.
+- Testy: dziecko, które rzuca, daje komunikat z przyciskiem i **żadnego** fragmentu treści błędu (`boom`, `secret stack detail`) w DOM; brak błędu = normalny render; „Spróbuj ponownie" przy wciąż zepsutym dziecku znów pokazuje komunikat, a po naprawieniu dziecka renderuje je; remount z innym kluczem (tak działa `key={tab}`) czyści błąd bez klikania.
+
+Decyzje własne: nie loguję błędu przez `console.error` — React i tak loguje wyjątek, a własny log mógłby zawierać dane użytkownika; zlecenie mówiło „nie loguj". `getDerivedStateFromError` bez `componentDidCatch` wystarcza, bo nic nie robimy z błędem.
+
+Pytania / blockery: brak.
+
+## Zadanie 43: Wspólna walidacja produktu  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `735fc947437073c9688744173fe59dc0cd2f715a`
+Zmienione pliki: `src/domain/validate.ts` (nowy) + `validate.test.ts`, `src/features/fridge/FridgeItemForm.tsx`, `BarcodeAdd.tsx`, `PhotoImport.tsx` (+ testy), `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `validateItem({ name, quantity, unit })` zwraca `{ ok: true, value }` (z nazwą i jednostką po `trim` i zwinięciu białych znaków) albo `{ ok: false, error: 'name' | 'quantity' | 'unit' }`. Reguły są lustrem serwera: nazwa 1–100 znaków, jednostka 1–20, ilość skończona, `> 0` i `<= 100000`. Trzy miejsca dodawania produktu korzystają z tej samej funkcji: formularz lodówki (komunikat przy polu w `role="alert"`, brak wywołania `onAdd`), ręczna nazwa z kodu kreskowego, a „Dodaj wszystko" ze zdjęcia blokuje całą paczkę i wskazuje numer wiersza (`photo.invalidRow` z `{{row}}`).
+
+Dowód:
+- `npm test` → `Test Files 31 passed (31)` / `Tests 301 passed (301)`; w tym `✓ src/domain/validate.test.ts (6 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 3.90s`.
+- Testy domenowe: granice nazwy `''`/`' '`/`1`/`100`/`101`, jednostki `0`/`1`/`20`/`21`, ilości `0`/`1`/`0.5`/`100000`/`100001`, `NaN`, `±Infinity`, ujemna, ilość jako string, oraz kolejność zgłaszania (najpierw nazwa, potem jednostka). Testy komponentów: formularz odrzuca 101 znaków, `0` i jednostkę 21 znaków, wskazując pole; ręczna nazwa odrzuca 101 znaków; import ze zdjęcia blokuje wiersz 1 (za długa nazwa) i wiersz 2 (ilość `0`) i nie woła `onAdd`.
+
+Decyzje własne: `quantity` przyjmuję wyłącznie jako `number` (string odrzucam), bo formularze konwertują wartość wcześniej — dzięki temu walidacja jest jednoznaczna. `PhotoImport` nie dodaje poprawnych wierszy, gdy jeden jest zły: dopisanie połowy zdjęcia byłoby trudniejsze do cofnięcia niż poprawienie wiersza. Konwersję przecinka na kropkę zostawiłem w formularzach (walidacja jej nie robi).
+
+Pytania / blockery: brak.
+
+## Zadanie 42: Wiersze z lokalnym id  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `4689956c1c34c5359c8e70229f5cb3934601c040`
+Zmienione pliki: `src/features/fridge/useFridge.ts`, `src/features/fridge/useFridge.test.ts`
+
+Co zrobiłem: `resolveId(id)` sprawdza, czy identyfikator zaczyna się od `local-`; jeśli tak, zapamiętuje wiersz, woła `load()` i szuka go ponownie po tym, co go identyfikuje (znormalizowana nazwa, jednostka, data ważności — przez `findMergeTarget`), po czym używa prawdziwego id. Gdy nie znajdzie, rzuca `Error('FRIDGE_ROW_NOT_SYNCED')`, co UI pokazuje jak każdy inny błąd. Zwykłe id przechodzi bez dodatkowego `load`. `remove` dodatkowo usuwa wiersz ze stanu lokalnego, żeby nie czekać na Realtime.
+
+Dowód:
+- `npm test` → `Test Files 30 passed (30)` / `Tests 291 passed (291)`; `✓ src/features/fridge/useFridge.test.ts (9 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.28s`.
+- Testy (zamockowany `supabase` z policzonymi `select`/`update`/`delete`/`eq`): `update` na `local-1` robi dodatkowy odczyt i trafia w `server-1`; `remove` na `local-1` kasuje `server-2` i czyści stan; brak wiersza po przeładowaniu rzuca `FRIDGE_ROW_NOT_SYNCED` i nie wykonuje żadnego zapisu; `update` na `server-9` **nie** robi dodatkowego odczytu.
+
+Decyzje własne: do dopasowania używam `findMergeTarget`, bo ma dokładnie tę samą definicję tożsamości wiersza co scalanie — jedna reguła zamiast dwóch. `load()` w `resolveId` nie jest opcjonalny: bez niego nie da się poznać prawdziwego id. Ryzyko, o którym warto wiedzieć: jeśli użytkownik w tym samym momencie zmieni w `local-N` datę albo jednostkę, `resolveId` nie znajdzie wiersza i zwróci `FRIDGE_ROW_NOT_SYNCED` — świadomie wolę błąd niż trafienie w niewłaściwy wiersz.
+
+Pytania / blockery: brak.
+
+## Zadanie 41: "Ugotowane" bez podwójnego odejmowania  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `459295ffe1b91f938e4b0ef3847e73207ef92b74`
+Zmienione pliki: `src/features/plan/PlanView.tsx` + `PlanView.test.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: podgląd trzyma teraz **migawkę** listy z chwili otwarcia i liczy się zawsze z niej (`previewChange`), więc liczby na ekranie nie zmieniają się, gdy Realtime odświeży lodówkę. Przed zapisem `isStale(snapshot)` sprawdza liczbę wierszy, ich tożsamość (nazwa, jednostka, data) i ilości; przy różnicy podgląd się zamyka, a użytkownik widzi `role="alert"` „Lodówka zmieniła się. Otwórz podgląd ponownie.". Po błędzie zapisu podgląd jest zamykany (żadnego ponowienia jednym kliknięciem), wołane jest `onReload` lodówki i pokazuje się „Część zmian mogła zostać zapisana. Sprawdź lodówkę przed ponowieniem.". Komunikat jest przypisany do dnia (`consumeNotice`), więc nie pojawia się przy wszystkich siedmiu dniach.
+
+Dowód:
+- `npm test` → `Test Files 30 passed (30)` / `Tests 287 passed (287)`; `✓ src/features/plan/PlanView.test.tsx (16 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.38s`.
+- Testy: poprawny przebieg zapisuje dokładnie `{ updates: [{ id: 'f1', newQuantity: 3 }], deletes: [] }` i zamyka podgląd; błąd zapisu woła `onReload`, zamyka podgląd i pokazuje komunikat (i tylko **jeden** alert na stronie); zmiana ilości w trakcie podglądu przerywa zapis komunikatem „Lodówka zmieniła się…" i nie woła `onConsume`; zniknięcie wiersza w trakcie podglądu daje to samo przerwanie.
+
+Decyzje własne: zgodność sprawdzam po `id`, a nie po kolejności wierszy — Realtime może przestawić listę, a to nie zmienia stanu lodówki. Zapis nadal nie jest transakcją (PostgREST jej tu nie daje), więc komunikat mówi wprost, że część zmian mogła się zapisać. Alert umieściłem przy dniu, którego dotyczy — pierwotna wersja renderowała go w każdym wierszu i to był prawdziwy błąd widoku, nie tylko problem testu.
+
+Pytania / blockery: brak.
+
+## Zadanie 40: Jedno miejsce na subskrypcję Realtime  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/40-hardening`, `8217125c58d669eb7a23bd77a6c8187ee225333d`
+Zmienione pliki: `src/lib/realtime.ts` (nowy) + `realtime.test.ts`, `src/features/fridge/useFridge.ts`, `recipes/useRecipes.ts`, `plan/useMealPlan.ts`, `shopping/useShopping.ts`
+
+Co zrobiłem: `subscribeToHousehold(table, householdId, onChange, debounceMs = 150)` buduje kanał `${table}:${householdId}`, filtr `household_id=eq.${householdId}`, `schema: 'public'`, `event: '*'`, dławi zdarzenia (trailing) i zwraca funkcję czyszczącą, która usuwa kanał, anuluje timer i zamyka subskrypcję. Cztery hooki wołają wyłącznie tę funkcję; ich zachowanie zewnętrzne się nie zmieniło. Filtr jest zbudowany tylko tutaj — to odpowiedź na regresję z poprzedniej paczki.
+
+Dowód:
+- `npm test` → `Test Files 30 passed (30)` / `Tests 284 passed (284)`; `✓ src/lib/realtime.test.ts (7 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 4.14s`.
+- Testy (zamockowany `supabase.channel`): dokładny łańcuch `{ event: '*', schema: 'public', table, filter }` i nazwa kanału dla każdej z czterech tabel, dwie rodziny z różnymi id mają różne filtry, 5 zdarzeń w oknie = jedno wywołanie, kolejna seria po upływie okna = drugie wywołanie, cleanup usuwa kanał i kasuje oczekujące wywołanie, zdarzenie po cleanupie nic nie robi, domyślne okno to 150 ms (149 ms — cisza, 150 ms — wywołanie).
+
+Decyzje własne: `handler` sprawdza flagę `closed` także wewnątrz callbacku timera — bez tego zdarzenie, które przyszło po odmontowaniu, uzbrajało nowy timer i wołało `onChange` dla nieistniejącego komponentu (widać to w teście „does nothing after cleanup"). To zachowanie jest sprawdzone testem, a nie tylko założone.
+
+Pytania / blockery: brak.
+
 ## Podsumowanie paczki zadań 26–39 (na górze, dla przeglądu)  —  2026-10-12
 
 - **Zrobione i gotowe do przeglądu: 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39** — czternaście zadań, czternaście commitów (`8e236ad` … `b1736f7`).

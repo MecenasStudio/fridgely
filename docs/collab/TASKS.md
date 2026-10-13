@@ -6,8 +6,8 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Paczka zadań 40–51: utwardzanie, odporność, testy, eksport danych
 
-STATUS: TODO
-Gałąź (jedna na całą paczkę): `task/40-hardening`, utwórz z aktualnego `main` (`git checkout main && git checkout -b task/40-hardening`).
+STATUS: READY FOR REVIEW (zadania 40–51 wykonane, patrz podsumowanie i raporty 40–51 w `REPORTS.md`)
+Gałąź (jedna na całą paczkę): `task/40-hardening`, utworzona z `main` (commity `8217125`, `459295f`, `4689956`, `735fc94`, `d8000f8`, `ccdf191`, `be31eda`, `16b4d82`, `18315f7`, `de21114`, `dffd6d3`)
 
 Kontekst: poprzednie paczki są przejrzane i scalone do `main`. W przeglądzie wyszły: regresja filtra Realtime lodówki (zła składnia, ten sam kod skopiowany w czterech hookach), niebezpieczne ponawianie "Ugotowane" po częściowym błędzie i wiersze z lokalnym id `local-N` ("local-1"), na których operacje kończą się błędem. Ta paczka to naprawa tych klas błędów i utwardzenie, nie nowe funkcje (poza eksportem danych).
 
