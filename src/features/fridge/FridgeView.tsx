@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { expiryStatus, sortByExpiry } from '../../domain/fridge'
+import { matchesQuery } from '../../domain/search'
 import type { FridgeItem } from '../../domain/types'
 import { FridgeItemForm, type NewFridgeItem } from './FridgeItemForm'
 import { BarcodeAdd } from './BarcodeAdd'
@@ -78,6 +79,8 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove, locale = '
   const sorted = sortByExpiry(items)
   const [failedId, setFailedId] = useState<string | null>(null)
   const [dateTarget, setDateTarget] = useState<{ id: string; name: string } | null>(null)
+  const [query, setQuery] = useState('')
+  const visible = sorted.filter((item) => matchesQuery(item.name, query))
 
   // Every write goes through here, so a failed update always shows up on that row.
   async function update(id: string, patch: Partial<NewFridgeItem>) {
@@ -108,8 +111,22 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove, locale = '
       {sorted.length === 0 ? (
         <p>{t('fridge.empty')}</p>
       ) : (
-        <ul>
-          {sorted.map((item) => {
+        <>
+          <label>
+            {t('fridge.search')}{' '}
+            <input
+              type="search"
+              aria-label={t('fridge.search')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>{' '}
+          <span role="status">{t('fridge.found', { count: visible.length })}</span>
+          {visible.length === 0 ? (
+            <p>{t('fridge.noMatches')}</p>
+          ) : (
+            <ul>
+              {visible.map((item) => {
             const status = expiryStatus(item, today)
             return (
               <li key={item.id} data-status={status}>
@@ -128,7 +145,9 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove, locale = '
               </li>
             )
           })}
-        </ul>
+            </ul>
+          )}
+        </>
       )}
     </section>
   )
