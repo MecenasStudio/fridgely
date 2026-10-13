@@ -39,7 +39,14 @@
                    "addExpiry":  "Uzupełnij datę ważności",
                    "expired":  "Przeterminowane",
                    "soon":  "Wkrótce",
-                   "remove":  "Usuń"
+                   "remove":  "Usuń",
+                   "barcode":  "Kod kreskowy",
+                   "barcodeSearch":  "Szukaj",
+                   "barcodeSearching":  "Szukam…",
+                   "barcodeNotFound":  "Nie znaleziono produktu. Wpisz nazwę ręcznie.",
+                   "barcodeAdd":  "Dodaj",
+                   "barcodeScan":  "Skanuj kamerą",
+                   "barcodeScanError":  "Nie udało się uruchomić kamery. Wpisz kod ręcznie."
                },
     "recipes":  {
                     "title":  "Nazwa przepisu",

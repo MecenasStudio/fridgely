@@ -39,7 +39,14 @@
                    "addExpiry":  "Add expiry date",
                    "expired":  "Expired",
                    "soon":  "Soon",
-                   "remove":  "Remove"
+                   "remove":  "Remove",
+                   "barcode":  "Barcode",
+                   "barcodeSearch":  "Search",
+                   "barcodeSearching":  "Searching…",
+                   "barcodeNotFound":  "Product not found. Type the name yourself.",
+                   "barcodeAdd":  "Add",
+                   "barcodeScan":  "Scan with camera",
+                   "barcodeScanError":  "Could not start the camera. Enter the code manually."
                },
     "recipes":  {
                     "title":  "Recipe title",
