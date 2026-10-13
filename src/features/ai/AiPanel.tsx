@@ -12,6 +12,8 @@ type Props = {
   onSave(recipe: { title: string; ingredients: Ingredient[]; steps: string[] }): Promise<void>
   /** Optional: ship the AI's missing ingredients to the shopping list. */
   onAddMissing?(names: string[]): Promise<void>
+  /** False while the browser is offline: the AI buttons cannot do anything useful then. */
+  online?: boolean
 }
 
 // Only these codes get their own wording; everything else is the generic message,
@@ -23,7 +25,7 @@ function errorKeyFor(error: unknown): string {
   return 'ai.genericError'
 }
 
-export function AiPanel({ hasItems, ask, onSave, onAddMissing }: Props) {
+export function AiPanel({ hasItems, ask, onSave, onAddMissing, online = true }: Props) {
   const { t } = useTranslation()
   const [result, setResult] = useState<{ task: Task; recipe: Recipe } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -94,10 +96,12 @@ export function AiPanel({ hasItems, ask, onSave, onAddMissing }: Props) {
     <section>
       <h2>{t('nav.ai')}</h2>
 
-      <button type="button" disabled={!hasItems || loading} onClick={() => run('recipes_from_fridge')}>
+      {!online && <p role="status">{t('ai.offline')}</p>}
+
+      <button type="button" disabled={!hasItems || loading || !online} onClick={() => run('recipes_from_fridge')}>
         {t('ai.fromFridge')}
       </button>{' '}
-      <button type="button" disabled={!hasItems || loading} onClick={() => run('dinner_from_expiring')}>
+      <button type="button" disabled={!hasItems || loading || !online} onClick={() => run('dinner_from_expiring')}>
         {t('ai.dinnerFromExpiring')}
       </button>
 

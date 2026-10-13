@@ -7,7 +7,8 @@
                    "loading":  "Loading…",
                    "loadFailed":  "Could not load the data.",
                    "retry":  "Try again",
-                   "crashed":  "Something went wrong."
+                   "crashed":  "Something went wrong.",
+                   "offline":  "No connection. Changes will not be saved."
                },
     "nav":  {
                 "fridge":  "Fridge",
@@ -158,7 +159,8 @@
                "sessionExpired":  "Your session expired. Please sign in again.",
                "saveFailed":  "Could not save the recipe. Please try again.",
                "genericError":  "Could not get a recipe. Please try again.",
-               "retry":  "Try again"
+               "retry":  "Try again",
+               "offline":  "No connection. The AI buttons are turned off."
            },
     "settings":  {
                      "key":  "Claude key",

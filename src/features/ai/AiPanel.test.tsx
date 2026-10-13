@@ -25,6 +25,7 @@ function renderPanel(overrides: {
   ask?: (task: 'recipes_from_fridge' | 'dinner_from_expiring') => Promise<Recipe>
   onSave?: (recipe: { title: string; ingredients: { name: string; quantity: number; unit: string }[]; steps: string[] }) => Promise<void>
   onAddMissing?: (names: string[]) => Promise<void>
+  online?: boolean
 } = {}) {
   const ask = overrides.ask ?? (async () => recipe)
   const onSave = overrides.onSave ?? noop
@@ -34,6 +35,7 @@ function renderPanel(overrides: {
       ask={ask}
       onSave={onSave}
       onAddMissing={overrides.onAddMissing}
+      online={overrides.online ?? true}
     />,
   )
   return { ask, onSave }
@@ -192,5 +194,15 @@ describe('AiPanel', () => {
     expect(screen.getByRole('button', { name: 'Recipe from my fridge' })).toHaveProperty('disabled', true)
     expect(screen.getByRole('button', { name: 'Dinner from what expires next' })).toHaveProperty('disabled', true)
     expect(screen.getByText('Add products to your fridge first.')).toBeTruthy()
+  })
+
+  it('turns the AI buttons off while the browser is offline, with the reason', () => {
+    const ask = vi.fn(async () => recipe)
+    renderPanel({ ask, online: false })
+
+    expect(screen.getByText('No connection. The AI buttons are turned off.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Recipe from my fridge' })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: 'Dinner from what expires next' })).toHaveProperty('disabled', true)
+    expect(ask).not.toHaveBeenCalled()
   })
 })

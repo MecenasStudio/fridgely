@@ -7,7 +7,8 @@
                    "loading":  "Ładowanie…",
                    "loadFailed":  "Nie udało się wczytać danych.",
                    "retry":  "Spróbuj ponownie",
-                   "crashed":  "Coś poszło nie tak."
+                   "crashed":  "Coś poszło nie tak.",
+                   "offline":  "Brak połączenia. Zmiany nie zostaną zapisane."
                },
     "nav":  {
                 "fridge":  "Lodówka",
@@ -158,7 +159,8 @@
                "sessionExpired":  "Sesja wygasła. Zaloguj się ponownie.",
                "saveFailed":  "Nie udało się zapisać przepisu. Spróbuj ponownie.",
                "genericError":  "Nie udało się pobrać przepisu. Spróbuj ponownie.",
-               "retry":  "Spróbuj ponownie"
+               "retry":  "Spróbuj ponownie",
+               "offline":  "Brak połączenia. Przyciski AI są wyłączone."
            },
     "settings":  {
                      "key":  "Klucz Claude",

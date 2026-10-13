@@ -4,6 +4,7 @@ import type { AiLocale, AiTask } from '../../lib/ai'
 import { useFridge } from '../fridge/useFridge'
 import { useRecipes } from '../recipes/useRecipes'
 import { useShopping } from '../shopping/useShopping'
+import { useOnline } from '../../lib/useOnline'
 import { AiPanel } from './AiPanel'
 
 function resolveLocale(language: string | undefined): AiLocale {
@@ -12,6 +13,7 @@ function resolveLocale(language: string | undefined): AiLocale {
 
 export function AiPage({ householdId }: { householdId: string }) {
   const { i18n } = useTranslation()
+  const online = useOnline()
   const { items } = useFridge(householdId)
   const { add } = useRecipes(householdId)
   const { addMany } = useShopping(householdId)
@@ -29,6 +31,7 @@ export function AiPage({ householdId }: { householdId: string }) {
       onAddMissing={async (names) => {
         await addMany(names.map((name) => ({ name, quantity: 1, unit: 'szt' })))
       }}
+      online={online}
     />
   )
 }

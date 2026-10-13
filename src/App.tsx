@@ -10,6 +10,7 @@ import { PlanPage } from './features/plan/PlanPage'
 import { ShoppingPage } from './features/shopping/ShoppingPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { ErrorBoundary } from './features/common/ErrorBoundary'
+import { useOnline } from './lib/useOnline'
 import { supabase } from './lib/supabase'
 
 const TABS = ['fridge', 'recipes', 'plan', 'shopping', 'ai', 'settings'] as const
@@ -18,6 +19,7 @@ type Tab = (typeof TABS)[number]
 function Home({ userId }: { userId: string }) {
   const { t, i18n } = useTranslation()
   const h = useHousehold(userId)
+  const online = useOnline()
   const [tab, setTab] = useState<Tab>('fridge')
   if (h.loading) return null
   if (!h.householdId) return <HouseholdSetup h={h} />
@@ -25,6 +27,7 @@ function Home({ userId }: { userId: string }) {
 
   return (
     <main>
+      {!online && <p role="status">{t('common.offline')}</p>}
       <header>
         <h1>{t('app.name')}</h1>
         <nav>
