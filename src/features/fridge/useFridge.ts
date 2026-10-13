@@ -85,18 +85,41 @@ export function useFridge(householdId: string) {
     localRowId += 1
     commit([...current.current, { ...item, id: `local-${localRowId}` }])
   }
+  const LOCAL_PREFIX = 'local-'
+
+  /**
+   * A row added in this session carries a placeholder id until the next `load` gives it the
+   * real one. Writing with that placeholder fails the query, so the row is looked up again by
+   * what identifies it — normalized name, unit and expiry date — and the real id is used.
+   *
+   * Throws `FRIDGE_ROW_NOT_SYNCED` when the reload cannot find it, which the UI reports like
+   * any other failed operation.
+   */
+  const resolveId = async (id: string): Promise<string> => {
+    if (!id.startsWith(LOCAL_PREFIX)) return id
+
+    const placeholder = current.current.find((row) => row.id === id)
+    await load()
+    const match = placeholder && findMergeTarget(current.current, placeholder)
+    if (!match) throw new Error('FRIDGE_ROW_NOT_SYNCED')
+    return match.id
+  }
+
   const update = async (id: string, patch: Partial<NewFridgeItem>) => {
+    const realId = await resolveId(id)
     const row: Record<string, unknown> = {}
     if (patch.name !== undefined) row.name = patch.name
     if (patch.quantity !== undefined) row.quantity = patch.quantity
     if (patch.unit !== undefined) row.unit = patch.unit
     if (patch.expiresOn !== undefined) row.expires_on = patch.expiresOn
-    const { error } = await supabase.from('fridge_items').update(row).eq('id', id)
+    const { error } = await supabase.from('fridge_items').update(row).eq('id', realId)
     if (error) throw error
   }
   const remove = async (id: string) => {
-    const { error } = await supabase.from('fridge_items').delete().eq('id', id)
+    const realId = await resolveId(id)
+    const { error } = await supabase.from('fridge_items').delete().eq('id', realId)
     if (error) throw error
+    commit(current.current.filter((row) => row.id !== realId))
   }
 
   return { items, loading, error, reload: load, add, update, remove }
