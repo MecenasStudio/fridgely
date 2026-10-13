@@ -189,6 +189,11 @@
                      "theme_dark":  "Dark",
                      "export":  "Download my data",
                      "exportHint":  "Saves your recipes, fridge, shopping list and week plan as a JSON file.",
+                     "privacy":  "Privacy",
+                     "privacyHousehold":  "Your household data (recipes, fridge, shopping list, plan) is stored in a Supabase database and visible to the members of the household.",
+                     "privacyKey":  "Your Claude key is stored encrypted on the server and never comes back to the browser in full — only its last characters are shown.",
+                     "privacyPhotos":  "Photos are downscaled in the browser first, then sent through a server function to Anthropic together with your key. Fridgely does not store them.",
+                     "privacyBarcodes":  "Barcodes are looked up in Open Food Facts to read the product name.",
                      "language":  "Language"
                  },
     "photo":  {

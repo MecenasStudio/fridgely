@@ -191,6 +191,17 @@ export function SettingsView({ status, language, household, theme = 'system', on
           {t('settings.exportHint')}
         </p>
       )}
+
+      {/* Only what the code actually does; no legal promises. */}
+      <section>
+        <h3>{t('settings.privacy')}</h3>
+        <ul>
+          <li>{t('settings.privacyHousehold')}</li>
+          <li>{t('settings.privacyKey')}</li>
+          <li>{t('settings.privacyPhotos')}</li>
+          <li>{t('settings.privacyBarcodes')}</li>
+        </ul>
+      </section>
     </section>
   )
 }

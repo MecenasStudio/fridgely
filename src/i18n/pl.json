@@ -189,6 +189,11 @@
                      "theme_dark":  "Ciemny",
                      "export":  "Pobierz moje dane",
                      "exportHint":  "Zapisze przepisy, lodówkę, listę zakupów i plan tygodnia jako plik JSON.",
+                     "privacy":  "Prywatność",
+                     "privacyHousehold":  "Dane domu (przepisy, lodówka, lista zakupów, plan) są przechowywane w bazie Supabase i widoczne dla członków domu.",
+                     "privacyKey":  "Twój klucz Claude jest przechowywany zaszyfrowany po stronie serwera i nigdy nie wraca do przeglądarki w całości — widać tylko jego końcówkę.",
+                     "privacyPhotos":  "Zdjęcia są najpierw zmniejszane w przeglądarce, a potem wysyłane przez funkcję serwerową do Anthropic razem z Twoim kluczem. Fridgely ich nie zapisuje.",
+                     "privacyBarcodes":  "Kody kreskowe są sprawdzane w Open Food Facts, żeby odczytać nazwę produktu.",
                      "language":  "Język"
                  },
     "photo":  {
