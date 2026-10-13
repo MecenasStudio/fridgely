@@ -108,6 +108,38 @@ describe('AiPanel', () => {
     expect(screen.getAllByRole('button', { name: 'Recipe from my fridge' })).toHaveLength(1)
   })
 
+  it('says the session expired instead of blaming a missing key', async () => {
+    renderPanel({
+      ask: async () => {
+        throw new AiError('UNAUTHENTICATED', 'ai function responded 401', 401)
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Recipe from my fridge' }))
+
+    expect(await screen.findByText('Your session expired. Please sign in again.')).toBeTruthy()
+    expect(screen.queryByText('No Claude key yet. Add one in Settings to use AI.')).toBeNull()
+  })
+
+  it('keeps the recipe on screen and alerts when saving fails', async () => {
+    const raw = 'insert failed: permission denied'
+    const onSave = vi.fn(async () => {
+      throw new Error(raw)
+    })
+    renderPanel({ onSave })
+    fireEvent.click(screen.getByRole('button', { name: 'Recipe from my fridge' }))
+    await screen.findByText('Omlet z pomidorami')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save to my recipes' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('Could not save the recipe. Please try again.')
+    expect(screen.queryByText(raw)).toBeNull()
+    // The recipe stays, so the user can press save again.
+    expect(screen.getByText('Omlet z pomidorami')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save to my recipes' })).toBeTruthy()
+    expect(onSave).toHaveBeenCalledTimes(1)
+  })
+
   it('disables both buttons and explains why when the fridge is empty', () => {
     renderPanel({ hasItems: false })
     expect(screen.getByRole('button', { name: 'Recipe from my fridge' })).toHaveProperty('disabled', true)

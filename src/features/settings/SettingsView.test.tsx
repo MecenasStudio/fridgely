@@ -1,6 +1,16 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import i18n from '../../i18n'
+import { ApiKeyError } from '../../lib/apiKey'
 import { SettingsView } from './SettingsView'
+
+// The view must not import anything from the network, but the test may: it throws the
+// real error class at the view to prove the `code` field drives the message.
+vi.mock('../../lib/supabase', () => ({
+  supabase: {
+    auth: { getSession: async () => ({ data: { session: null }, error: null }) },
+    rpc: async () => ({ data: [], error: null }),
+  },
+}))
 
 const noStatus = { hasKey: false, last4: null }
 const savedStatus = { hasKey: true, last4: 'wxyz' }
@@ -100,6 +110,33 @@ describe('SettingsView', () => {
     expect(await screen.findByText('Could not save the key. Please try again.')).toBeTruthy()
     expect(screen.queryByText('network down')).toBeNull()
     expect(keyField().value).toBe('sk-ant-abcdefgh')
+  })
+
+  it('says the key was rejected when the server answers INVALID_KEY', async () => {
+    const onSave = vi.fn(async () => {
+      throw new ApiKeyError('INVALID_KEY', 'key rejected')
+    })
+    renderView({ onSave })
+    fireEvent.change(keyField(), { target: { value: 'sk-ant-abcdefgh' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
+
+    expect(await screen.findByText('Claude rejected this key. Please check that it is correct.')).toBeTruthy()
+    expect(screen.queryByText('Could not save the key. Please try again.')).toBeNull()
+  })
+
+  it('alerts and keeps the key when removing it fails', async () => {
+    const onClear = vi.fn(async () => {
+      throw new ApiKeyError('NETWORK', 'delete failed')
+    })
+    renderView({ status: savedStatus, onClear })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove key' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('Could not remove the key. Please try again.')
+    // The button stays, because the key is still stored server-side.
+    expect(screen.getByRole('button', { name: 'Remove key' })).toBeTruthy()
+    expect(screen.queryByText('delete failed')).toBeNull()
   })
 
   it('switches the language through the selector', () => {

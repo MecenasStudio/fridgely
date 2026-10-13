@@ -14,9 +14,11 @@ type Props = {
 
 // Only these codes get their own wording; everything else is the generic message,
 // and the raw server text is never rendered.
-const MESSAGE_KEY: Partial<Record<string, string>> = {
-  NO_API_KEY: 'ai.noKey',
-  UNAUTHENTICATED: 'ai.noKey',
+function errorKeyFor(error: unknown): string {
+  const code = error instanceof AiError ? error.code : undefined
+  if (code === 'NO_API_KEY') return 'ai.noKey'
+  if (code === 'UNAUTHENTICATED') return 'ai.sessionExpired'
+  return 'ai.genericError'
 }
 
 export function AiPanel({ hasItems, ask, onSave }: Props) {
@@ -25,11 +27,14 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
 
   async function run(task: Task) {
     setLoading(true)
     setError(null)
     setSaved(false)
+    setSaveFailed(false)
     setResult(null)
     try {
       const recipe = await ask(task)
@@ -42,18 +47,26 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
   }
 
   async function save() {
-    if (!result) return
-    await onSave({
-      title: result.recipe.title,
-      ingredients: result.recipe.ingredients,
-      steps: result.recipe.steps,
-    })
-    setSaved(true)
-    setResult(null)
+    if (!result || saving) return
+    setSaving(true)
+    setSaveFailed(false)
+    try {
+      await onSave({
+        title: result.recipe.title,
+        ingredients: result.recipe.ingredients,
+        steps: result.recipe.steps,
+      })
+      setSaved(true)
+      setResult(null)
+    } catch {
+      // Keep the recipe on screen, so pressing save again is the whole retry.
+      setSaveFailed(true)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const errorKey = error instanceof AiError ? MESSAGE_KEY[error.code] : undefined
-  const errorText = errorKey ? t(errorKey) : t('ai.genericError')
+  const errorText = t(errorKeyFor(error))
 
   return (
     <section>
@@ -67,11 +80,11 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
       </button>
 
       {!hasItems && <p>{t('ai.emptyFridge')}</p>}
-      {loading && <p>{t('ai.loading')}</p>}
+      {loading && <p role="status">{t('ai.loading')}</p>}
 
       {error !== null && !loading && (
         <div>
-          <p>{errorText}</p>
+          <p role="alert">{errorText}</p>
           <button type="button" onClick={() => setError(null)}>
             {t('ai.retry')}
           </button>
@@ -109,7 +122,7 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
             </>
           )}
 
-          <button type="button" disabled={loading} onClick={() => save()}>
+          <button type="button" disabled={loading || saving} onClick={() => save()}>
             {t('ai.save')}
           </button>{' '}
           <button type="button" disabled={loading} onClick={() => run(result.task)}>
@@ -118,7 +131,8 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
         </>
       )}
 
-      {saved && <p>{t('ai.saved')}</p>}
+      {saved && <p role="status">{t('ai.saved')}</p>}
+      {saveFailed && <p role="alert">{t('ai.saveFailed')}</p>}
     </section>
   )
 }
