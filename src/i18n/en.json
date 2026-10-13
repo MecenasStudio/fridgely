@@ -104,7 +104,14 @@
                  "missing_one":  "Missing: {{count}} ingredient",
                  "missing_few":  "Missing: {{count}} ingredients",
                  "missing_many":  "Missing: {{count}} ingredients",
-                 "missing_other":  "Missing: {{count}} ingredients"
+                 "missing_other":  "Missing: {{count}} ingredients",
+                 "cooked":  "Cooked",
+                 "consumePreview":  "I will use from the fridge:",
+                 "consumeUse":  "{{name}}: {{quantity}} {{unit}}",
+                 "consumeNothing":  "Nothing comes out of the fridge.",
+                 "confirm":  "Confirm",
+                 "cancel":  "Cancel",
+                 "consumeFailed":  "Could not save the fridge changes. Nothing was changed silently — check the fridge and try again."
              },
     "shopping":  {
                      "generate":  "Build list from plan",

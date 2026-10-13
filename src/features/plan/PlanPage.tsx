@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { pickWeek, shiftWeek, weekDays } from '../../domain/plan'
+import type { ConsumeResult } from '../../domain/consume'
 import { todayISO } from '../../domain/fridge'
 import { useFridge } from '../fridge/useFridge'
 import { useRecipes } from '../recipes/useRecipes'
@@ -14,12 +15,22 @@ export function PlanPage({ householdId }: { householdId: string }) {
   const days = weekDays(start)
 
   const { recipes } = useRecipes(householdId)
-  const { items } = useFridge(householdId)
+  const { items, update: updateFridge, remove: removeFromFridge } = useFridge(householdId)
   const { plan, set, setMany } = useMealPlan(householdId, days)
 
   const randomize = async () => {
     const picked = pickWeek(recipes, items, Math.random)
     await setMany(Object.fromEntries(days.map((d, i) => [d, picked[i]?.id ?? null])))
+  }
+
+  // The view only calls this after the user confirmed the preview.
+  const consume = async (change: ConsumeResult) => {
+    for (const row of change.updates) {
+      await updateFridge(row.id, { quantity: row.newQuantity })
+    }
+    for (const id of change.deletes) {
+      await removeFromFridge(id)
+    }
   }
 
   const label = new Intl.DateTimeFormat(i18n.language, {
@@ -39,6 +50,7 @@ export function PlanPage({ householdId }: { householdId: string }) {
       isCurrentWeek={start === today}
       onShiftWeek={(weeks) => setStart((current) => shiftWeek(current, weeks * 7))}
       onThisWeek={() => setStart(today)}
+      onConsume={consume}
       onSet={set}
       onRandomize={randomize}
     />

@@ -104,7 +104,14 @@
                  "missing_one":  "Brakuje: {{count}} składnik",
                  "missing_few":  "Brakuje: {{count}} składniki",
                  "missing_many":  "Brakuje: {{count}} składników",
-                 "missing_other":  "Brakuje: {{count}} składnika"
+                 "missing_other":  "Brakuje: {{count}} składnika",
+                 "cooked":  "Ugotowane",
+                 "consumePreview":  "Zużyję z lodówki:",
+                 "consumeUse":  "{{name}}: {{quantity}} {{unit}}",
+                 "consumeNothing":  "Nic nie ubywa z lodówki.",
+                 "confirm":  "Potwierdź",
+                 "cancel":  "Anuluj",
+                 "consumeFailed":  "Nie udało się zapisać zmian w lodówce. Nic nie zostało zmienione po cichu — sprawdź lodówkę i spróbuj ponownie."
              },
     "shopping":  {
                      "generate":  "Utwórz listę z planu",
