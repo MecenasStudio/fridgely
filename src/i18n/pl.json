@@ -21,7 +21,17 @@
                  "switchToSignUp":  "Nie mam konta",
                  "switchToSignIn":  "Mam już konto",
                  "checkEmail":  "Sprawdź skrzynkę e-mail.",
-                 "failed":  "Nie udało się zalogować. Sprawdź e-mail i hasło."
+                 "failed":  "Nie udało się zalogować. Sprawdź e-mail i hasło.",
+                 "forgotPassword":  "Nie pamiętam hasła",
+                 "resetSent":  "Jeśli konto istnieje, wysłaliśmy link do zmiany hasła.",
+                 "resetNeedsEmail":  "Najpierw wpisz swój e-mail.",
+                 "newPassword":  "Nowe hasło",
+                 "repeatPassword":  "Powtórz hasło",
+                 "savePassword":  "Zapisz nowe hasło",
+                 "passwordTooShort":  "Hasło musi mieć co najmniej 6 znaków.",
+                 "passwordMismatch":  "Hasła nie są takie same.",
+                 "passwordFailed":  "Nie udało się zmienić hasła. Spróbuj ponownie.",
+                 "passwordSaved":  "Hasło zmienione."
              },
     "household":  {
                       "title":  "Twój dom",

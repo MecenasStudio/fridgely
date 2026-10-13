@@ -21,7 +21,17 @@
                  "switchToSignUp":  "I need an account",
                  "switchToSignIn":  "I already have an account",
                  "checkEmail":  "Check your inbox.",
-                 "failed":  "Could not sign you in. Check your e-mail and password."
+                 "failed":  "Could not sign you in. Check your e-mail and password.",
+                 "forgotPassword":  "I forgot my password",
+                 "resetSent":  "If that account exists, we have sent a link to change the password.",
+                 "resetNeedsEmail":  "Type your e-mail first.",
+                 "newPassword":  "New password",
+                 "repeatPassword":  "Repeat the password",
+                 "savePassword":  "Save the new password",
+                 "passwordTooShort":  "The password needs at least 6 characters.",
+                 "passwordMismatch":  "The passwords do not match.",
+                 "passwordFailed":  "Could not change the password. Please try again.",
+                 "passwordSaved":  "Password changed."
              },
     "household":  {
                       "title":  "Your household",
