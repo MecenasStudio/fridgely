@@ -26,6 +26,12 @@ function pickFile(input: HTMLElement, name = 'fridge.jpg') {
   return file
 }
 
+/** A file picker that was closed without choosing anything. */
+function pickNoFile(input: HTMLElement) {
+  Object.defineProperty(input, 'files', { value: undefined, configurable: true })
+  fireEvent.change(input)
+}
+
 type Overrides = {
   recognize?: (image: unknown, locale: string) => Promise<DetectedItem[]>
   readDate?: (image: unknown, locale: string) => Promise<string | null>
@@ -193,6 +199,39 @@ describe('PhotoImport', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Save the date' }))
     expect(await screen.findByText('Could not save the date. Please try again.')).toBeTruthy()
     expect(screen.queryByText('update denied')).toBeNull()
+  })
+
+  it('shows the reading state and ignores a second pick while the date is loading', async () => {
+    // The read never settles: the point is the busy state and the guard behind it.
+    const readDate = vi.fn(async () => {
+      await new Promise(() => {})
+      return '2026-11-30'
+    })
+    renderImport({ readDate, dateTarget: { id: 'a', name: 'Mleko' } })
+
+    const input = screen.getByLabelText('Read the date from a photo Mleko')
+    pickFile(input)
+
+    expect(await screen.findByText('Reading the date…')).toBeTruthy()
+    expect(readDate).toHaveBeenCalledTimes(1)
+
+    pickFile(input)
+    expect(readDate).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not lock the reader when a pick is cancelled', async () => {
+    const readDate = vi.fn(async () => '2026-11-30')
+    renderImport({ readDate, dateTarget: { id: 'a', name: 'Mleko' } })
+
+    const input = screen.getByLabelText('Read the date from a photo Mleko')
+    pickNoFile(input)
+    expect(readDate).not.toHaveBeenCalled()
+    expect(screen.queryByText('Reading the date…')).toBeNull()
+
+    // A cancelled pick must not leave `readBusy` stuck on, so a real pick still works.
+    pickFile(input)
+    expect(await screen.findByText('Date read: 2026-11-30')).toBeTruthy()
+    expect(readDate).toHaveBeenCalledTimes(1)
   })
 
   it('shows the loading state while the photo is being read', async () => {

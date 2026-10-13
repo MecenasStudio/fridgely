@@ -101,7 +101,9 @@ export function PhotoImport({
   }
 
   async function onDatePhoto(file: File | null | undefined) {
-    if (!file || !dateTarget || readBusy) return    setReadBusy(true)
+    // Bail out without touching `readBusy`: a missing file must not lock the reader.
+    if (!file || !dateTarget || readBusy) return
+    setReadBusy(true)
     setDateError(null)
     setLabelDate(null)
     setDateMissing(false)
