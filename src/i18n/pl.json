@@ -73,6 +73,10 @@
                     "delete":  "Usuń",
                     "confirmDelete":  "Na pewno?",
                     "showSteps":  "Pokaż kroki",
+                    "edit":  "Edytuj",
+                    "save":  "Zapisz",
+                    "cancel":  "Anuluj",
+                    "updateFailed":  "Nie udało się zapisać zmian. Spróbuj ponownie.",
                     "addFailed":  "Nie udało się dodać przepisu. Spróbuj ponownie.",
                     "deleteFailed":  "Nie udało się usunąć przepisu. Spróbuj ponownie."
                 },

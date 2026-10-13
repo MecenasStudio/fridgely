@@ -37,6 +37,16 @@ export function useRecipes(householdId: string) {
     const { error } = await supabase.from('recipes').delete().eq('id', id)
     if (error) throw error
   }
+  const update = async (id: string, patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => {
+    const { error } = await supabase
+      .from('recipes')
+      .update({ title: patch.title, ingredients: patch.ingredients, steps: patch.steps })
+      .eq('id', id)
+    if (error) throw error
+    setRecipes((current) =>
+      current.map((recipe) => (recipe.id === id ? { ...recipe, ...patch } : recipe)),
+    )
+  }
 
-  return { recipes, add, del }
+  return { recipes, add, del, update }
 }

@@ -73,6 +73,10 @@
                     "delete":  "Delete",
                     "confirmDelete":  "Really delete?",
                     "showSteps":  "Show steps",
+                    "edit":  "Edit",
+                    "save":  "Save",
+                    "cancel":  "Cancel",
+                    "updateFailed":  "Could not save the changes. Please try again.",
                     "addFailed":  "Could not add the recipe. Please try again.",
                     "deleteFailed":  "Could not delete the recipe. Please try again."
                 },

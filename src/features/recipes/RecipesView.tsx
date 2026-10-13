@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { parseIngredient } from '../../domain/recipe'
-import type { Recipe } from '../../domain/types'
+import { formatIngredient, parseIngredient } from '../../domain/recipe'
+import type { Ingredient, Recipe } from '../../domain/types'
 
 type Props = {
   recipes: Recipe[]
   onAdd: (r: Omit<Recipe, 'id'>) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onUpdate: (id: string, patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => Promise<void>
 }
 
 /**
@@ -50,12 +51,98 @@ function DeleteButton({ title, onDelete }: { title: string; onDelete: () => Prom
   )
 }
 
-export function RecipesView({ recipes, onAdd, onDelete }: Props) {
+/** Shared by the "add" form and the per-recipe edit form. */
+type RecipeDraft = { title: string; ingredients: string; steps: string }
+
+function ingredientsFromText(text: string): Ingredient[] {
+  return text.split('\n').map(parseIngredient).filter((i) => i !== null)
+}
+
+function stepsFromText(text: string): string[] {
+  return text.split('\n').map((step) => step.trim()).filter(Boolean)
+}
+
+/**
+ * The edit form of one recipe. It starts from the stored recipe and only calls `onUpdate`
+ * when the title is filled in; "Cancel" simply closes, leaving the recipe untouched.
+ */
+function EditRecipeForm({
+  recipe,
+  onUpdate,
+  onClose,
+}: {
+  recipe: Recipe
+  onUpdate: (patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => Promise<void>
+  onClose(): void
+}) {
+  const { t } = useTranslation()
+  const [draft, setDraft] = useState<RecipeDraft>({
+    title: recipe.title,
+    ingredients: recipe.ingredients.map(formatIngredient).join('\n'),
+    steps: recipe.steps.join('\n'),
+  })
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    const title = draft.title.trim()
+    if (!title || saving) return
+    setSaving(true)
+    setFailed(false)
+    try {
+      await onUpdate({
+        title,
+        ingredients: ingredientsFromText(draft.ingredients),
+        steps: stepsFromText(draft.steps),
+      })
+      onClose()
+    } catch {
+      setFailed(true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <input
+        required
+        aria-label={t('recipes.title')}
+        placeholder={t('recipes.title')}
+        value={draft.title}
+        onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+      />
+      <textarea
+        aria-label={t('recipes.ingredientsHint')}
+        placeholder={t('recipes.ingredientsHint')}
+        value={draft.ingredients}
+        onChange={(e) => setDraft({ ...draft, ingredients: e.target.value })}
+      />
+      <textarea
+        aria-label={t('recipes.steps')}
+        placeholder={t('recipes.steps')}
+        value={draft.steps}
+        onChange={(e) => setDraft({ ...draft, steps: e.target.value })}
+      />
+      <button type="submit" disabled={draft.title.trim().length === 0 || saving}>
+        {t('recipes.save')}
+      </button>{' '}
+      <button type="button" onClick={onClose}>
+        {t('recipes.cancel')}
+      </button>
+      {failed && <p role="alert">{t('recipes.updateFailed')}</p>}
+    </form>
+  )
+}
+
+export function RecipesView({ recipes, onAdd, onDelete, onUpdate }: Props) {
   const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [ingredients, setIngredients] = useState('')
   const [steps, setSteps] = useState('')
   const [addFailed, setAddFailed] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -64,8 +151,8 @@ export function RecipesView({ recipes, onAdd, onDelete }: Props) {
     try {
       await onAdd({
         title: title.trim(),
-        ingredients: ingredients.split('\n').map(parseIngredient).filter((i) => i !== null),
-        steps: steps.split('\n').map((s) => s.trim()).filter(Boolean),
+        ingredients: ingredientsFromText(ingredients),
+        steps: stepsFromText(steps),
       })
       setTitle('')
       setIngredients('')
@@ -92,8 +179,18 @@ export function RecipesView({ recipes, onAdd, onDelete }: Props) {
           {recipes.map((r) => (
             <li key={r.id}>
               <strong>{r.title}</strong>{' '}
+              <button type="button" aria-label={`${t('recipes.edit')} ${r.title}`} onClick={() => setEditingId(r.id)}>
+                {t('recipes.edit')}
+              </button>{' '}
               <DeleteButton title={r.title} onDelete={() => onDelete(r.id)} />
-              <div>{r.ingredients.map((i) => `${i.quantity} ${i.unit} ${i.name}`).join(', ')}</div>
+              {editingId === r.id && (
+                <EditRecipeForm
+                  recipe={r}
+                  onUpdate={(patch) => onUpdate(r.id, patch)}
+                  onClose={() => setEditingId(null)}
+                />
+              )}
+              <div>{r.ingredients.map((ing) => `${ing.quantity} ${ing.unit} ${ing.name}`).join(', ')}</div>
               {(r.steps ?? []).length > 0 && (
                 <details>
                   <summary>{t('recipes.showSteps')}</summary>
