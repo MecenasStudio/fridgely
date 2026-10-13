@@ -4,9 +4,73 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ---
 
+## Paczka zadań 11–17: poprawki, braki funkcjonalne, testy i dokumentacja
+
+STATUS: TODO
+Gałąź (jedna na całą paczkę): `task/11-17-polish`, tworzona z aktualnego `main`.
+
+Zasady paczki są takie same jak w paczce 7–10 (jeden commit na zadanie, kolejność 11 → 17, po każdym `npm test` i `npm run build`, osobny wpis w `REPORTS.md` na zadanie, zatrzymaj się po zadaniu 17 lub na `BLOCKER`). Dodatkowo:
+
+- Nie zmieniaj `supabase/` ani `package.json`. Nowe klucze tłumaczeń zawsze w `pl.json` i `en.json`.
+- Błąd operacji użytkownika ma zawsze być widoczny w interfejsie (krótki komunikat z `role="alert"`), a nie kończyć się nieobsłużonym odrzuceniem Promise. Stany ładowania i potwierdzenia: `role="status"`.
+- Nigdy nie pokazuj surowych komunikatów serwera ani klucza.
+
+### Zadanie 11: Obsługa błędów (poprawki z przeglądu)
+
+Files: `src/features/ai/AiPanel.tsx` (+ test), `src/features/settings/SettingsView.tsx` (+ test), `src/features/fridge/BarcodeAdd.tsx` (+ test), `src/i18n/*.json`.
+
+1. `AiPanel.save`: gdy `onSave` rzuci, pokaż komunikat `ai.saveFailed`, zostaw wynik na ekranie (użytkownik może ponowić), bez nieobsłużonego odrzucenia.
+2. `SettingsView`: `onClear` w `try/catch` z komunikatem `settings.clearFailed`; `onSave` rzucające `ApiKeyError` z `code === 'INVALID_KEY'` pokazuje `settings.keyRejected` ("Claude nie przyjął tego klucza"), inny błąd `settings.saveFailed`. Widok nie importuje nic z sieci: błąd rozpoznaj przez `error.code`.
+3. `BarcodeAdd.add` i `ManualName`: błąd `onAdd` pokazuje `fridge.addFailed`, pole pozostaje wypełnione.
+4. `AiPanel`: `AiError` z `code === 'UNAUTHENTICATED'` pokazuje `ai.sessionExpired` ("Sesja wygasła, zaloguj się ponownie"), a nie komunikat o braku klucza.
+5. Komunikaty ładowania w `role="status"`, błędy w `role="alert"`.
+
+Testy: po jednym na punkty 1–4 (komponenty z wstrzykniętymi, rzucającymi callbackami, bez sieci).
+
+### Zadanie 12: Widoczne kroki przepisu
+
+Files: `src/features/recipes/RecipesView.tsx` (+ test `RecipesView.test.tsx`), `src/i18n/*.json`.
+
+Lista przepisów pokazuje dziś tylko składniki. Każdy przepis ma pokazywać kroki jako listę numerowaną w elemencie `<details>` ("Pokaż kroki" / `recipes.showSteps`), a przy braku kroków nic nie renderować. Dodaj potwierdzenie przed usunięciem (`window.confirm`-free: dwuetapowy przycisk "Usuń" → "Na pewno?" `recipes.confirmDelete`, drugie kliknięcie wywołuje `onDelete`, utrata fokusu/Escape anuluje). Testy: kroki widoczne w `details`, jedno kliknięcie nie wywołuje `onDelete`, drugie wywołuje.
+
+### Zadanie 13: Braki z przepisu AI na listę zakupów
+
+Files: `src/features/ai/AiPanel.tsx`, `src/features/ai/AiPage.tsx`, `src/features/shopping/useShopping.ts` (dodaj `addMany(list: Ingredient[]): Promise<void>`, wstawia wiersze bez kasowania istniejących), testy w `AiPanel.test.tsx`, `src/i18n/*.json`.
+
+W wyniku AI, gdy `missing.length > 0`, przycisk "Dodaj braki do listy zakupów" (`ai.addMissing`). Nowy opcjonalny prop `onAddMissing(names: string[]): Promise<void>`; po sukcesie potwierdzenie `ai.missingAdded`, błąd `ai.addMissingFailed`. `AiPage` mapuje nazwy na `{ name, quantity: 1, unit: 'szt' }`. Testy: przycisk ukryty przy pustym `missing`, wywołanie z poprawną listą, obsługa błędu.
+
+### Zadanie 14: Edycja produktu w lodówce
+
+Files: `src/features/fridge/FridgeView.tsx` (+ rozszerz `FridgeView.test.tsx`), `src/i18n/*.json`.
+
+Przy każdym produkcie: pole liczbowe z ilością (zapis `onUpdate(id, { quantity })` po `blur`/Enter, tylko gdy wartość `> 0` i zmieniona, w przeciwnym razie przywróć poprzednią) oraz pole daty ważności także dla produktów z datą (zmiana wywołuje `onUpdate(id, { expiresOn })`, wyczyszczenie daty daje `null`). Dostępne etykiety (`aria-label`) z nazwą produktu. Testy: zmiana ilości, odrzucenie `0` i ujemnej, zmiana i wyczyszczenie daty.
+
+### Zadanie 15: Kupione z listy do lodówki
+
+Files: `src/domain/shopping.ts` (dodaj `purchasedToFridge`) + test `shopping.test.ts`, `src/features/shopping/ShoppingView.tsx` (+ test), `ShoppingPage.tsx`, `useShopping.ts` (dodaj `deleteByIds(ids: string[])`), `src/i18n/*.json`.
+
+Interfejs: `purchasedToFridge(items: { name: string; quantity: number; unit: string; checked: boolean }[]): { name: string; quantity: number; unit: string; expiresOn: null }[]` (tylko `checked`, nazwa przez `normalizeName`, kolejność zachowana).
+`ShoppingView`: nowy prop `onMoveChecked(): Promise<void>`; przycisk "Przenieś kupione do lodówki" (`shopping.moveChecked`) widoczny tylko gdy coś jest odhaczone. `ShoppingPage`: najpierw dodaj **wszystkie** produkty do lodówki (`useFridge.add`), a dopiero po sukcesie wszystkich usuń odhaczone wiersze listy; przy błędzie niczego nie usuwaj i pokaż `shopping.moveFailed` (brak utraty danych). Testy: funkcja domenowa (tylko odhaczone, normalizacja, pusta lista), przycisk ukryty/widoczny.
+
+### Zadanie 16: Testy integracyjne powłoki aplikacji
+
+Files: `src/App.test.tsx`, `src/features/auth/AuthGate.test.tsx` (nowe; bez zmian w kodzie produkcyjnym, chyba że test ujawni błąd: wtedy opisz w raporcie i popraw minimalnie).
+
+Z `vi.mock('./lib/supabase')` (klient z `auth.getSession`, `onAuthStateChange`, `from(...)`, `rpc`, `channel`): (a) niezalogowany użytkownik widzi formularz logowania, błąd logowania wyświetla komunikat; (b) zalogowany bez domu widzi ekran tworzenia/dołączania; (c) zalogowany z domem widzi 6 zakładek i przełączanie zakładek renderuje właściwe sekcje (Lodówka, Przepisy, Plan, Zakupy, AI, Ustawienia); (d) wylogowanie woła `auth.signOut`. Bez sieci.
+
+### Zadanie 17: README
+
+Files: `README.md` (nowy).
+
+Po polsku i angielsku (dwie sekcje): czym jest Fridgely, funkcje, stack, wymagania, uruchomienie lokalne (`npm install`, `.env.local` z `VITE_SUPABASE_URL` i `VITE_SUPABASE_ANON_KEY`, `npm run dev`, `npm test`, `npm run build`), struktura katalogów (`src/domain`, `src/features`, `src/lib`, `supabase/migrations`, `supabase/functions`), baza (migracje i test RLS `supabase/tests/rls.sql`), funkcje Edge `ai` i `save-key` (wymagane sekrety: `KEY_ENCRYPTION_SECRET`; bez wartości!), model BYOK (klucz użytkownika trafia tylko do `save-key`, zapisany zaszyfrowany, nigdy do przeglądarki), konwencje współpracy z `docs/collab/`. Bez sekretów, bez prawdziwych adresów projektu i kluczy.
+
+---
+
 ## Paczka zadań 7–10 (UI): wykonaj wszystkie po kolei, bez przerw na przegląd
 
-STATUS: READY FOR REVIEW (zadania 7, 8, 9 i 10 wykonane, patrz raporty 7–10 w `REPORTS.md`)
+STATUS: DONE (przegląd: ACCEPTED z uwagami, scalone do main w c28d506; uwagi przeniesione do zadania 11)
+
+Przegląd Claude: `npm test` 105/105, `npm run build` OK, zakres plików zgodny, brak nowych zależności, sekretów i logowania klucza. Raport uczciwie przyznaje brak weryfikacji wizualnej. Uwagi (naprawia zadanie 11): (a) błędy zapisu są połykane lub kończą się nieobsłużonym odrzuceniem w `AiPanel.save`, `SettingsView` (usuwanie klucza), `BarcodeAdd.add`; (b) odrzucony przez serwer klucz (`INVALID_KEY`) pokazuje to samo co błąd sieci; (c) `UNAUTHENTICATED` w panelu AI pokazuje komunikat o braku klucza. Poprawek wykonawcy: 0 z 2.
 Gałąź (jedna na całą paczkę): `task/7-10-ui`, utworzona z `main` (commity `39c9df8`, `c61f9c6`, `54fbc0d`, `e480547`)
 
 Zasady paczki (uzupełniają `docs/collab/README.md`):
