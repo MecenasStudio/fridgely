@@ -2,6 +2,27 @@
 
 Nowe wpisy dodawaj na górze, według szablonu z `docs/collab/README.md`.
 
+## Raport 25: poprawki po przeglądzie paczki 18–24  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `3b8d186ad2d1999991da4550ff1705b2f1aecae5`
+Zmienione pliki: `src/features/fridge/PhotoImport.tsx`, `PhotoImport.test.tsx`, `src/features/fridge/useFridge.ts`, `useFridge.test.ts` (nowy)
+
+**Punkt 1 — `PhotoImport.tsx`, sklejona linia (`onDatePhoto`).** Miałeś rację: `if (!file || !dateTarget || readBusy) return    setReadBusy(true)` było czytane jako `return setReadBusy(true)`, więc przy wczesnym wyjściu `readBusy` zostawało `true` na stałe (odczyt dat przestawał działać do przeładowania), a w normalnej ścieżce `readBusy` nigdy nie było `true` — brakowało komunikatu „Czytam datę…" i nie było zabezpieczenia przed podwójnym wysłaniem. Teraz wczesne `return` stoi w osobnej linii i nic nie ustawia, a `setReadBusy(true)` jest pierwsze w normalnej ścieżce (z komentarzem, dlaczego tak). Przejrzałem też `PhotoImport.tsx`, `useFridge.ts`, `image.ts` i `ai.ts` pod kątem innych sklejonych linii — nic więcej nie znalazłem (skan po wzorcach `)\s+(set|await|return|if|const|throw)` i `return <wyrażenie> <kolejna instrukcja>`).
+Dodane testy: (a) przy oczekującym `readDate` widać `role="status"` z `photo.reading`, a drugi wybór pliku **nie** woła `readDate` ponownie; (b) anulowany wybór (`files` = `undefined`) nie woła `readDate`, nie pokazuje stanu odczytu i nie blokuje kolejnego, poprawnego wyboru.
+
+**Punkt 2 — `useFridge.add`, utrata ilości przy scalaniu.** `findMergeTarget` czytał `items` z domknięcia renderu, więc pętla wywołań („Dodaj wszystko" ze zdjęcia, przenoszenie kupionych) widziała tę samą, nieodświeżoną listę. Teraz hook trzyma aktualną listę w `useRef` (`current`), którą ustawia jedno miejsce — `commit(next)`, wołane zarówno przez `load` (po odczycie z Supabase, także z Realtime), jak i przez `add`. `add` liczy scalenie na `current.current`, a po udanym zapisie aktualizuje referencję: `quantity` istniejącego wiersza dla `update` albo dokłada wiersz z lokalnym kluczem `local-N` dla `insert` (insert nie zwraca id). Dzięki temu kolejne wywołania w jednej pętli widzą skutki poprzednich. Wyścig między dwiema osobami z domu zostawiłem i opisałem w komentarzu przy `add` (akceptowane na tym etapie; Realtime dogrywa stan chwilę później).
+Dodany test hooka (`useFridge.test.ts`, zamockowany `supabase`): trzy kolejne `add` tego samego produktu z ilościami 1, 2, 2 dają **jeden** `insert` i dwa `update` z ilościami `[3, 5]` oraz końcowy stan jednego wiersza z ilością 5; drugi test: dwa `add` (6 i 4) → jeden `insert` + `update` z 10; trzeci: inna jednostka i inna data nie są scalane (3 insercje, 0 aktualizacji).
+
+Dowód (po poprawkach):
+- `npm test` → `Test Files 25 passed (25)` / `Tests 193 passed (193)` (przed poprawkami 188/24); w tym `✓ src/features/fridge/useFridge.test.ts (3 tests)` i `✓ src/features/fridge/PhotoImport.test.tsx (11 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.88s`.
+- Zakres: tylko 4 pliki w `src/features/fridge/` — brak zmian w `supabase/`, `package.json`, `src/i18n/*`. Brak nowych zależności i sekretów.
+
+Decyzje własne: `update` i `remove` nie aktualizują referencji lokalnie — zostawiają to najbliższemu `load`, bo nie są wołane w pętli i nie biorą udziału w scalaniu; opisałem to w komentarzu przy `commit`. Wiersz wstawiony lokalnie ma id `local-N`, które istnieje tylko w pamięci i znika przy pierwszym `load` z Realtime; scalanie porównuje tylko nazwę, jednostkę i datę, więc to nie przeszkadza. `localRowId` jest licznikiem modułowym, żeby dwa hooki w jednej sesji nie wygenerowały tego samego klucza.
+
+Pytania / blockery: brak. Wdrożenie funkcji `ai` nadal należy do Ciebie.
+
 ## Zadanie 24: Reset hasła  —  2026-10-12
 
 STATUS: READY FOR REVIEW
