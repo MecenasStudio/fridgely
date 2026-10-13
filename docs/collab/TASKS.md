@@ -6,8 +6,8 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Paczka zadań 7–10 (UI): wykonaj wszystkie po kolei, bez przerw na przegląd
 
-STATUS: TODO
-Gałąź (jedna na całą paczkę): `task/7-10-ui`, tworzona z aktualnego `main`.
+STATUS: READY FOR REVIEW (zadania 7, 8, 9 i 10 wykonane, patrz raporty 7–10 w `REPORTS.md`)
+Gałąź (jedna na całą paczkę): `task/7-10-ui`, utworzona z `main` (commity `39c9df8`, `c61f9c6`, `54fbc0d`, `e480547`)
 
 Zasady paczki (uzupełniają `docs/collab/README.md`):
 
