@@ -1,4 +1,4 @@
-﻿{
+{
     "app":  {
                 "name":  "Fridgely",
                 "tagline":  "Plan meals. Waste less food."
@@ -57,5 +57,20 @@
     "shopping":  {
                      "generate":  "Build list from plan",
                      "empty":  "Nothing to buy."
-                 }
+                 },
+    "ai":  {
+               "fromFridge":  "Recipe from my fridge",
+               "dinnerFromExpiring":  "Dinner from what expires next",
+               "loading":  "Putting a recipe together…",
+               "emptyFridge":  "Add products to your fridge first.",
+               "ingredients":  "Ingredients",
+               "steps":  "Steps",
+               "missing":  "To buy",
+               "save":  "Save to my recipes",
+               "saved":  "Saved to your recipes.",
+               "next":  "Another one",
+               "noKey":  "No Claude key yet. Add one in Settings to use AI.",
+               "genericError":  "Could not get a recipe. Please try again.",
+               "retry":  "Try again"
+           }
 }
