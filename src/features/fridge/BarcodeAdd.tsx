@@ -34,6 +34,7 @@ export function BarcodeAdd({ onAdd, lookup = lookupBarcode }: Props) {
   const [searching, setSearching] = useState(false)
   const [expiresOn, setExpiresOn] = useState('')
   const [adding, setAdding] = useState(false)
+  const [addFailed, setAddFailed] = useState(false)
   const [scanError, setScanError] = useState(false)
   const [scanning, setScanning] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -73,11 +74,17 @@ export function BarcodeAdd({ onAdd, lookup = lookupBarcode }: Props) {
   async function add(name: string) {
     if (adding) return
     setAdding(true)
+    setAddFailed(false)
     try {
       await onAdd({ name, quantity: 1, unit: 'szt', expiresOn: expiresOn || null })
       setCode('')
       setExpiresOn('')
       reset()
+    } catch (error) {
+      // Keep everything the user typed/scanned, so retrying is one click. The error is
+      // re-thrown so `ManualName` can keep its own field filled too.
+      setAddFailed(true)
+      throw error
     } finally {
       setAdding(false)
     }
@@ -135,7 +142,8 @@ export function BarcodeAdd({ onAdd, lookup = lookupBarcode }: Props) {
       )}
 
       {scanning && <video ref={videoRef} muted playsInline />}
-      {scanError && <p>{t('fridge.barcodeScanError')}</p>}
+      {searching && <p role="status">{t('fridge.barcodeSearching')}</p>}
+      {scanError && <p role="alert">{t('fridge.barcodeScanError')}</p>}
 
       {found && (
         <div>
@@ -144,7 +152,7 @@ export function BarcodeAdd({ onAdd, lookup = lookupBarcode }: Props) {
             {t('fridge.expiresOn')}{' '}
             <input type="date" value={expiresOn} onChange={(e) => setExpiresOn(e.target.value)} />
           </label>{' '}
-          <button type="button" disabled={adding} onClick={() => void add(found.name)}>
+          <button type="button" disabled={adding} onClick={() => void add(found.name).catch(() => {})}>
             {t('fridge.barcodeAdd')}
           </button>
         </div>
@@ -156,6 +164,8 @@ export function BarcodeAdd({ onAdd, lookup = lookupBarcode }: Props) {
           <ManualName onAdd={add} />
         </div>
       )}
+
+      {addFailed && <p role="alert">{t('fridge.addFailed')}</p>}
     </div>
   )
 }
@@ -164,6 +174,23 @@ export function BarcodeAdd({ onAdd, lookup = lookupBarcode }: Props) {
 function ManualName({ onAdd }: { onAdd(name: string): Promise<void> }) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
+  const [failed, setFailed] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  async function submit() {
+    if (saving) return
+    setSaving(true)
+    setFailed(false)
+    try {
+      await onAdd(name.trim())
+      setName('')
+    } catch {
+      // The typed name stays in the field for another attempt.
+      setFailed(true)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <>
@@ -171,13 +198,10 @@ function ManualName({ onAdd }: { onAdd(name: string): Promise<void> }) {
         {t('fridge.name')}{' '}
         <input aria-label={t('fridge.name')} value={name} onChange={(e) => setName(e.target.value)} />
       </label>{' '}
-      <button
-        type="button"
-        disabled={name.trim().length === 0}
-        onClick={() => void onAdd(name.trim()).then(() => setName(''))}
-      >
+      <button type="button" disabled={name.trim().length === 0 || saving} onClick={() => void submit()}>
         {t('fridge.barcodeAdd')}
       </button>
+      {failed && <p role="alert">{t('fridge.addFailed')}</p>}
     </>
   )
 }

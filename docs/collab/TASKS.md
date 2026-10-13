@@ -6,8 +6,8 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Paczka zadań 11–17: poprawki, braki funkcjonalne, testy i dokumentacja
 
-STATUS: TODO
-Gałąź (jedna na całą paczkę): `task/11-17-polish`, tworzona z aktualnego `main`.
+STATUS: READY FOR REVIEW (zadania 11–17 wykonane, patrz raporty 11–17 w `REPORTS.md`)
+Gałąź (jedna na całą paczkę): `task/11-17-polish`, utworzona z `main` (commity `951b280`, `e6da7e7`, `3442e6f`, `f7c394d`, `571d19b`, `f6d200f`, `2dddf70`)
 
 Zasady paczki są takie same jak w paczce 7–10 (jeden commit na zadanie, kolejność 11 → 17, po każdym `npm test` i `npm run build`, osobny wpis w `REPORTS.md` na zadanie, zatrzymaj się po zadaniu 17 lub na `BLOCKER`). Dodatkowo:
 

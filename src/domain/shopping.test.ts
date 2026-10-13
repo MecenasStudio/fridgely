@@ -1,4 +1,4 @@
-﻿import { buildShoppingList } from './shopping'
+import { buildShoppingList, purchasedToFridge } from './shopping'
 import type { FridgeItem, Recipe } from './types'
 
 const recipe = (id: string, ingredients: Recipe['ingredients']): Recipe => ({
@@ -38,5 +38,24 @@ describe('buildShoppingList', () => {
 
   it('returns empty list for no recipes', () => {
     expect(buildShoppingList([], [])).toEqual([])
+  })
+})
+
+describe('purchasedToFridge', () => {
+  it('takes only the checked rows, in order, with no expiry date', () => {
+    const rows = purchasedToFridge([
+      { name: 'Mleko ', quantity: 2, unit: 'l', checked: true },
+      { name: 'Chleb', quantity: 1, unit: 'szt', checked: false },
+      { name: 'Jajka', quantity: 6, unit: 'szt', checked: true },
+    ])
+    expect(rows).toEqual([
+      { name: 'mleko', quantity: 2, unit: 'l', expiresOn: null },
+      { name: 'jajka', quantity: 6, unit: 'szt', expiresOn: null },
+    ])
+  })
+
+  it('returns an empty list when nothing is checked', () => {
+    expect(purchasedToFridge([{ name: 'Chleb', quantity: 1, unit: 'szt', checked: false }])).toEqual([])
+    expect(purchasedToFridge([])).toEqual([])
   })
 })

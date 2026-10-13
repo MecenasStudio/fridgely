@@ -8,6 +8,7 @@
                 "recipes":  "Przepisy",
                 "plan":  "Plan",
                 "shopping":  "Zakupy",
+                "ai":  "AI",
                 "settings":  "Ustawienia"
             },
     "auth":  {
@@ -19,7 +20,8 @@
                  "magicLink":  "Wyślij link logowania",
                  "switchToSignUp":  "Nie mam konta",
                  "switchToSignIn":  "Mam już konto",
-                 "checkEmail":  "Sprawdź skrzynkę e-mail."
+                 "checkEmail":  "Sprawdź skrzynkę e-mail.",
+                 "failed":  "Nie udało się zalogować. Sprawdź e-mail i hasło."
              },
     "household":  {
                       "title":  "Twój dom",
@@ -37,6 +39,9 @@
                    "add":  "Dodaj",
                    "empty":  "Lodówka jest pusta.",
                    "addExpiry":  "Uzupełnij datę ważności",
+                   "quantityOf":  "Ilość: {{name}}",
+                   "expiresOnOf":  "Data ważności: {{name}}",
+                   "updateFailed":  "Nie udało się zapisać zmiany. Spróbuj ponownie.",
                    "expired":  "Przeterminowane",
                    "soon":  "Wkrótce",
                    "remove":  "Usuń",
@@ -46,7 +51,8 @@
                    "barcodeNotFound":  "Nie znaleziono produktu. Wpisz nazwę ręcznie.",
                    "barcodeAdd":  "Dodaj",
                    "barcodeScan":  "Skanuj kamerą",
-                   "barcodeScanError":  "Nie udało się uruchomić kamery. Wpisz kod ręcznie."
+                   "barcodeScanError":  "Nie udało się uruchomić kamery. Wpisz kod ręcznie.",
+                   "addFailed":  "Nie udało się dodać produktu. Spróbuj ponownie."
                },
     "recipes":  {
                     "title":  "Nazwa przepisu",
@@ -54,7 +60,11 @@
                     "steps":  "Kroki, jeden w linii",
                     "add":  "Dodaj przepis",
                     "empty":  "Brak przepisów.",
-                    "delete":  "Usuń"
+                    "delete":  "Usuń",
+                    "confirmDelete":  "Na pewno?",
+                    "showSteps":  "Pokaż kroki",
+                    "addFailed":  "Nie udało się dodać przepisu. Spróbuj ponownie.",
+                    "deleteFailed":  "Nie udało się usunąć przepisu. Spróbuj ponownie."
                 },
     "plan":  {
                  "randomize":  "Losuj tydzień",
@@ -63,7 +73,10 @@
              },
     "shopping":  {
                      "generate":  "Utwórz listę z planu",
-                     "empty":  "Nic do kupienia."
+                     "empty":  "Nic do kupienia.",
+                     "moveChecked":  "Przenieś kupione do lodówki",
+                     "moved":  "Kupione produkty są w lodówce.",
+                     "moveFailed":  "Nie udało się przenieść kupionych produktów. Lista została bez zmian."
                  },
     "ai":  {
                "fromFridge":  "Przepis z lodówki",
@@ -75,8 +88,13 @@
                "missing":  "Do kupienia",
                "save":  "Zapisz do moich przepisów",
                "saved":  "Zapisane w przepisach.",
+               "addMissing":  "Dodaj braki do listy zakupów",
+               "missingAdded":  "Braki dodane do listy zakupów.",
+               "addMissingFailed":  "Nie udało się dodać braków do listy zakupów. Spróbuj ponownie.",
                "next":  "Kolejny",
                "noKey":  "Brak klucza Claude. Dodaj go w Ustawieniach, żeby korzystać z AI.",
+               "sessionExpired":  "Sesja wygasła. Zaloguj się ponownie.",
+               "saveFailed":  "Nie udało się zapisać przepisu. Spróbuj ponownie.",
                "genericError":  "Nie udało się pobrać przepisu. Spróbuj ponownie.",
                "retry":  "Spróbuj ponownie"
            },
@@ -85,9 +103,12 @@
                      "keySaved":  "Klucz zapisany (…{{last4}})",
                      "noKey":  "Brak klucza",
                      "save":  "Zapisz klucz",
+                     "saving":  "Zapisuję klucz…",
                      "clear":  "Usuń klucz",
                      "invalidKey":  "Klucz musi zaczynać się od sk-ant-.",
+                     "keyRejected":  "Claude nie przyjął tego klucza. Sprawdź, czy klucz jest poprawny.",
                      "saveFailed":  "Nie udało się zapisać klucza. Spróbuj ponownie.",
+                     "clearFailed":  "Nie udało się usunąć klucza. Spróbuj ponownie.",
                      "language":  "Język"
                  }
 }

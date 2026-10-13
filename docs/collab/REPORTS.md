@@ -2,6 +2,135 @@
 
 Nowe wpisy dodawaj na górze, według szablonu z `docs/collab/README.md`.
 
+## Zadanie 17: README  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/11-17-polish`, `2dddf70cab64315f18645ee99d2988944875ddd2`
+Zmienione pliki: `README.md` (nowy, 179 linii)
+
+Co zrobiłem: napisałem `README.md` w dwóch sekcjach językowych (najpierw „Polski”, potem „English”) z linkami-spisem treści na górze. Każda sekcja opisuje: czym jest Fridgely, listę funkcji (lodówka, przepisy, plan, zakupy, AI/BYOK, ustawienia, dom), stack, wymagania, uruchomienie lokalne (`npm install`, `.env.local` z `VITE_SUPABASE_URL` i `VITE_SUPABASE_ANON_KEY`, `npm run dev`, `npm test`, `npm run build`), strukturę katalogów (`src/domain`, `src/features`, `src/lib`, `supabase/migrations`, `supabase/functions`), bazę (migracje po kolei i test RLS `supabase/tests/rls.sql` z wyjaśnieniem, że udany przebieg kończy się `ERROR P0001: RLS_TEST_OK`), obie funkcje Edge w tabeli z kodami błędów, wymagane sekrety funkcji (`KEY_ENCRYPTION_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — bez żadnych wartości) oraz model BYOK w trzech krokach. Na końcu odsyłacz do `docs/collab/`.
+
+Dowód:
+- `npm test` → `Test Files 21 passed (21)` / `Tests 138 passed (138)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.63s`.
+- `Select-String README.md -Pattern 'sk-ant-|eyJ|supabase\.co/[a-z]|KEY_ENCRYPTION_SECRET='` → 0 trafień: w README nie ma klucza, tokenu ani prawdziwego adresu projektu (występuje tylko placeholder `https://<your-project>.supabase.co`).
+- Zakres: jedyny zmieniony plik to `README.md` — dokładnie jak w `Files`.
+
+Decyzje własne: sekcje PL i EN są pełne, ale nie są dosłownym tłumaczeniem jeden do jednego (EN czyta się jako samodzielny dokument). Wymieniłem `SUPABASE_URL` i `SUPABASE_SERVICE_ROLE_KEY` obok `KEY_ENCRYPTION_SECRET`, bo bez nich funkcje nie wystartują, a w `TASKS.md` jako obowiązkowy był podany tylko pierwszy — napisałem, że Supabase dostarcza te dwie automatycznie.
+
+Pytania / blockery: brak.
+
+## Zadanie 16: Testy integracyjne powłoki aplikacji  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/11-17-polish`, `f6d200fd67a6aa301adc11e686f7ba7f4481d090`
+Zmienione pliki: `src/App.test.tsx` (nowy, 5 testów), `src/features/auth/AuthGate.test.tsx` (nowy, 4 testy) oraz — zobacz „Decyzje własne” — `src/features/auth/AuthGate.tsx` i `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: w obu plikach zamockowałem `lib/supabase` przez `vi.mock` + `vi.hoisted` (jedno miejsce trzyma stan sesji, wiersz `members`, wiersz `households` oraz łańcuch zapytań `select/eq/in/order/limit/maybeSingle/single`, `rpc`, `channel`), więc testy działają bez sieci. `App.test.tsx` pokrywa cztery punkty zlecenia: (a) niezalogowany widzi formularz logowania, a nieudane logowanie daje komunikat, (b) zalogowany bez domu widzi ekran tworzenia/dołączania, (c) zalogowany z domem widzi wszystkie sześć zakładek i przełączanie renderuje właściwe sekcje (sprawdzane po nagłówku `h2`, plus obecność selektora języka w Ustawieniach), (d) „Wyloguj” woła `auth.signOut`. `AuthGate.test.tsx` dodaje to, czego nie widać z `App`: brak renderu, dopóki sesja jest nieznana, formularz bez sesji, dzieci z sesją oraz reakcję na `onAuthStateChange`.
+
+Dowód:
+- `npm test` → `Test Files 21 passed (21)` / `Tests 138 passed (138)` (przed tym zadaniem 129/19); w tym `✓ src/App.test.tsx (5 tests)` i `✓ src/features/auth/AuthGate.test.tsx (4 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 505ms`.
+- Zakres: kod produkcyjny zmieniony tylko w `AuthGate.tsx` (patrz niżej); reszta to pliki testowe z `Files`.
+
+Decyzje własne (minimalna poprawka kodu, o której zlecenie mówi „wtedy opisz w raporcie i popraw minimalnie”):
+1. **Test ujawnił brakujący klucz tłumaczenia.** Zakładka AI renderowała się jako `nav.ai` (dosłowny klucz), bo `nav.ai` nigdy nie został dodany do `pl.json`/`en.json` — test parzystości kluczy tego nie łapie, bo brakuje go w obu plikach. Dodałem `nav.ai` = „AI” w obu językach. To naprawia widoczną wadę interfejsu z zadania 7.
+2. **`AuthGate` pokazywał surowy komunikat Supabase** (`error.message`, np. „Invalid login credentials”), co łamie zasadę batcha „nigdy nie pokazuj surowych komunikatów serwera”. Dodałem klucz `auth.failed` („Nie udało się zalogować…” / „Could not sign you in…”) i `role="alert"`; surowy tekst nie trafia już do DOM (test to sprawdza).
+3. W teście zakresu zakładek szukam przycisków wewnątrz elementu `nav`, bo przyciski „AI” i „Ustawienia” mają tę samą nazwę dostępną co nagłówki sekcji — inaczej `getByRole` zwracałoby dwa elementy.
+4. `AuthGate.test.tsx` używa `new Promise(() => {})` do sprawdzenia stanu „sesja nieznana”, więc ten test celowo nie czeka na rozstrzygnięcie.
+
+Pytania / blockery: brak.
+
+## Zadanie 15: Kupione z listy do lodówki  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/11-17-polish`, `571d19bb23d7757e610d673277238acd344a0f90`
+Zmienione pliki: `src/domain/shopping.ts` (+ `NewFridgeRow`, `purchasedToFridge`), `src/domain/shopping.test.ts`, `src/features/shopping/ShoppingView.tsx`, `ShoppingView.test.tsx`, `ShoppingPage.tsx`, `useShopping.ts` (+ `deleteByIds`), `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `purchasedToFridge(items)` zwraca tylko wiersze z `checked: true`, w kolejności wejściowej, z nazwą przez `normalizeName` i `expiresOn: null` (typ `NewFridgeRow` to `Omit<FridgeItem, 'id'>` ze `expiresOn: null`, więc wynik wchodzi w `useFridge.add` bez rzutowania). `useShopping` ma `deleteByIds(ids)` (`delete().in('id', ids)`, nic nie robi dla pustej listy). `ShoppingView` dostał `onMoveChecked()` i pokazuje „Przenieś kupione do lodówki” tylko gdy coś jest odhaczone, z potwierdzeniem `shopping.moved` (`role="status"`) i błędem `shopping.moveFailed` (`role="alert"`). `ShoppingPage.moveChecked` najpierw dodaje **wszystkie** produkty do lodówki, a dopiero po sukcesie wszystkich usuwa odhaczone wiersze; przy błędzie nic nie jest usuwane.
+
+Dowód:
+- `npm test` → `Test Files 19 passed (19)` / `Tests 129 passed (129)` (przed tym zadaniem 124/19); w tym `✓ src/domain/shopping.test.ts (6 tests)` i `✓ src/features/shopping/ShoppingView.test.tsx (5 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 451ms`.
+- Testy domenowe: tylko odhaczone, kolejność zachowana, `Mleko ` → `mleko`, pusta lista i lista bez odhaczonych → `[]`. Testy widoku: przycisk ukryty bez odhaczeń / widoczny z odhaczeniem, wywołanie i potwierdzenie, alert przy błędzie z zachowaną listą i przyciskiem.
+
+Decyzje własne: dodałem typ `NewFridgeRow`, żeby `expiresOn: null` było widoczne w typie wyniku. Świadomie nie dodaję `id` do wiersza lodówki i nie scalam duplikatów: jeśli ten sam produkt jest już w lodówce, po przeniesieniu będą dwa wiersze (kolejność i dane użytkownika nie giną, a scalanie nazw to osobna decyzja projektowa). „Przenieś kupione” nie jest blokowane, gdy lista jest pusta — przycisk wtedy nie istnieje, a funkcja i tak kończy się natychmiast.
+
+Pytania / blockery: brak.
+
+## Zadanie 14: Edycja produktu w lodówce  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/11-17-polish`, `f7c394dd9da5de9f0781ddccb23c48521593cd8a`
+Zmienione pliki: `src/features/fridge/FridgeView.tsx`, `src/features/fridge/FridgeView.test.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: każdy wiersz lodówki ma teraz pole liczbowe z ilością i pole daty ważności. Ilość zapisuje się na `blur` albo Enter, tylko gdy wartość jest liczbą `> 0` i różni się od zapisanej — inaczej pole wraca do wartości z bazy (bez wywołania `onUpdate`); przecinek dziesiętny jest akceptowany. Data jest edytowalna także dla produktów, które już ją mają, a wyczyszczenie pola zapisuje `null`. Oba pola mają `aria-label` z nazwą produktu (`Quantity: Mleko`, `Expiry date: Mleko`), więc wiersze są rozróżnialne. Każdy zapis idzie przez jedną lokalną funkcję `update`, która przy błędzie pokazuje `fridge.updateFailed` w `role="alert"` przy tym wierszu.
+
+Dowód:
+- `npm test` → `Test Files 19 passed (19)` / `Tests 124 passed (124)` (przed tym zadaniem 119/19); `✓ src/features/fridge/FridgeView.test.tsx (9 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.51s`.
+- Testy: zapis nowej ilości na blur i na Enter, odrzucenie `0` i `-5` z przywróceniem wartości, brak zapisu przy niezmienionej wartości, zmiana daty i jej wyczyszczenie do `null`, komunikat przy nieudanym zapisie. Stare testy widoku (sortowanie, „Expired”, „Add expiry date”, pusty stan, dodawanie) nadal przechodzą bez zmian.
+
+Decyzje własne: wspólny przycisk „×” do usuwania zostawiłem po staremu (bez potwierdzenia) — potwierdzenie usuwania było wymagane tylko dla przepisów w zadaniu 12. Data bez statusu „unknown” nie ma już osobnej etykiety „Uzupełnij datę ważności”, ale sama prośba o datę nadal się pokazuje dla produktów bez daty, więc wymóg z zadania 12 (i spec) jest spełniony. Pole daty pokazuje wartość z bazy, a nie lokalny stan, więc po zapisie widać wynik z serwera.
+
+Pytania / blockery: brak.
+
+## Zadanie 13: Braki z przepisu AI na listę zakupów  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/11-17-polish`, `3442e6fa509fb6bcfe8ded2f95d8c439a7cc61d5`
+Zmienione pliki: `src/features/ai/AiPanel.tsx`, `src/features/ai/AiPanel.test.tsx`, `src/features/ai/AiPage.tsx`, `src/features/shopping/useShopping.ts`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `AiPanel` ma nowy opcjonalny prop `onAddMissing(names: string[])`. Gdy w wyniku AI jest niepuste `missing`, pod listą „Do kupienia” pojawia się przycisk `ai.addMissing`; po sukcesie pokazuje `ai.missingAdded` (`role="status"`), a przy błędzie `ai.addMissingFailed` (`role="alert"`) i przycisk zostaje, więc ponowienie to jedno kliknięcie. `useShopping` dostał `addMany(list: Ingredient[])`, który wstawia wiersze bez kasowania istniejących (w przeciwieństwie do `replaceAll`), a `AiPage` mapuje nazwy na `{ name, quantity: 1, unit: 'szt' }`.
+
+Dowód:
+- `npm test` → `Test Files 19 passed (19)` / `Tests 119 passed (119)` (przed tym zadaniem 116/19); `✓ src/features/ai/AiPanel.test.tsx (12 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 371ms`.
+- Testy: przycisk ukryty przy pustym `missing` (i `onAddMissing` niewołane), wywołanie z `['masło']` plus potwierdzenie, alert przy błędzie z surowym tekstem nieobecnym w DOM i przyciskiem nadal na ekranie.
+
+Decyzje własne: `onAddMissing` jest opcjonalny (zgodnie ze zleceniem „nowy opcjonalny prop”), więc `AiPanel` bez niego — np. w starszych testach — po prostu nie pokazuje przycisku. Dodałem `addMany` do `useShopping` zamiast nowego hooka, bo lista zakupów jest już jego odpowiedzialnością; nie zmieniałem `replaceAll` ani generowania listy z planu. Nazwy idą do listy w takiej postaci, w jakiej zwrócił je model (bez normalizacji) — normalizacja jest w `buildShoppingList`, a tu użytkownik widzi dokładnie to, co wygenerowało AI.
+
+Pytania / blockery: brak.
+
+## Zadanie 12: Widoczne kroki przepisu  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/11-17-polish`, `e6da7e73863c1ef264d4771ac71782f186c6c9f8`
+Zmienione pliki: `src/features/recipes/RecipesView.tsx`, `src/features/recipes/RecipesView.test.tsx` (nowy), `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: każdy przepis z niepustą listą kroków pokazuje `<details>` z podsumowaniem `recipes.showSteps` („Pokaż kroki” / „Show steps”) i numerowaną listą kroków; przepis bez kroków nie renderuje niczego dodatkowego. Usuwanie to teraz dwa kliknięcia w ten sam przycisk: pierwsze uzbraja go i zmienia etykietę na `recipes.confirmDelete` („Na pewno?” / „Really delete?”), drugie wywołuje `onDelete`. Utrata fokusu (`blur`) i Escape rozbrajają przycisk. Dodałem też komunikaty `recipes.addFailed` i `recipes.deleteFailed` w `role="alert"`, bo oba zapisy szły wcześniej bez obsługi błędu.
+
+Dowód:
+- `npm test` → `Test Files 19 passed (19)` / `Tests 116 passed (116)` (przed tym zadaniem 111/18); `✓ src/features/recipes/RecipesView.test.tsx (5 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 340ms`.
+- Testy: kroki widoczne wewnątrz `details` w kolejności, brak `details` przy pustych krokach, jedno kliknięcie nie woła `onDelete` a drugie woła (`r1`), anulowanie Escape i `blur`, komunikaty przy nieudanym usunięciu i dodaniu.
+
+Decyzje własne: zamiast osobnego przycisku „Tak, usuń” użyłem tego samego przycisku z nową etykietą i `aria-label`, bo wymóg mówił „dwuetapowy przycisk”. `window.confirm` nie jest używany. Recepta bez kroków nie dostaje pustego `details` (zgodnie ze zleceniem). Komunikaty błędów dodałem w tym samym zadaniu, bo dotyczy on tego pliku, a zasada batcha wymaga widocznego błędu zamiast nieobsłużonego odrzucenia.
+
+Pytania / blockery: brak.
+
+## Zadanie 11: Obsługa błędów (poprawki z przeglądu)  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/11-17-polish`, `951b280bf0f115162d4b40b5df396c4bf7d6ffaf`
+Zmienione pliki: `src/features/ai/AiPanel.tsx`, `AiPanel.test.tsx`, `src/features/settings/SettingsView.tsx`, `SettingsView.test.tsx`, `src/features/fridge/BarcodeAdd.tsx`, `BarcodeAdd.test.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem — po kolei punkty przeglądu:
+1. `AiPanel.save` ma `try/catch`: przy błędzie `onSave` pokazuje `ai.saveFailed` w `role="alert"`, **zostawia przepis na ekranie** (ponowienie to jedno kliknięcie) i nie kończy się nieobsłużonym odrzuceniem.
+2. `SettingsView.onClear` jest w `try/catch` z `settings.clearFailed`; `onSave` rozróżnia błędy po polu `code` (`errorCodeOf`, bez importu czegokolwiek z sieci): `INVALID_KEY` → `settings.keyRejected`, każdy inny → `settings.saveFailed`. Dodałem też `settings.saving` w `role="status"`.
+3. `BarcodeAdd.add` przy błędzie `onAdd` pokazuje `fridge.addFailed`, nie czyści kodu ani daty i **przekazuje błąd dalej** (`throw`), żeby `ManualName` też zachował wpisaną nazwę; oba przyciski mają swój komunikat, a `ManualName` ma własny stan `failed`.
+4. `AiPanel` mapuje teraz `NO_API_KEY` → `ai.noKey`, a `UNAUTHENTICATED` → `ai.sessionExpired` („Sesja wygasła. Zaloguj się ponownie.”).
+5. Komunikaty ładowania/potwierdzenia są w `role="status"` (`ai.loading`, `ai.saved`, `fridge.barcodeSearching`, `settings.saving`), a wszystkie błędy w `role="alert"`. W `BarcodeAdd` przycisk „Szukaj” nadal pokazuje `fridge.barcodeSearching`, ale stan ładowania ma teraz osobny akapit ze statusem, więc informacja jest dostępna także dla czytnika ekranu.
+
+Dowód:
+- `npm test` → `Test Files 18 passed (18)` / `Tests 111 passed (111)` (przed tym zadaniem 105/18); w tym `✓ src/features/ai/AiPanel.test.tsx (9 tests)`, `✓ src/features/settings/SettingsView.test.tsx (9 tests)`, `✓ src/features/fridge/BarcodeAdd.test.tsx (8 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.41s`.
+- Nowe testy pokrywają po jednym na punkty 1–4 (komponenty z wstrzykniętymi, rzucającymi callbackami, bez sieci): zapis przepisu, usuwanie klucza i klucz odrzucony przez serwer, dodanie produktu (znaleziony kod i ręczna nazwa), `UNAUTHENTICATED`. W dwóch testach sprawdzam, że surowy komunikat (`insert failed: permission denied`, `delete denied`, `network down`) nie występuje w DOM.
+
+Decyzje własne: `SettingsView.test.tsx` mockuje `../../lib/supabase` i używa prawdziwego `ApiKeyError`, żeby dowieść, że o komunikacie decyduje pole `code` — sam widok nadal nie importuje niczego z sieci. `BarcodeAdd.add` rzuca dalej po ustawieniu alertu; przy przycisku „Dodaj” dla znalezionego kodu wołanie jest opakowane w `.catch(() => {})`, więc nie ma nieobsłużonego odrzucenia. Komunikat `fridge.barcodeScanError` też przeniosłem do `role="alert"`.
+
+Pytania / blockery: brak.
+
 ## Zadanie 10: Wygląd (CSS, bez zależności)  —  2026-10-12
 
 STATUS: READY FOR REVIEW

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
@@ -19,22 +19,26 @@ function SignIn() {
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [message, setMessage] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setMessage(null)
+    setFailed(false)
     const { error } =
       mode === 'signin'
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password })
-    if (error) setMessage(error.message)
+    if (error) setFailed(true)
     else if (mode === 'signup') setMessage(t('auth.checkEmail'))
   }
 
   async function magicLink() {
     setMessage(null)
+    setFailed(false)
     const { error } = await supabase.auth.signInWithOtp({ email })
-    setMessage(error ? error.message : t('auth.checkEmail'))
+    if (error) setFailed(true)
+    else setMessage(t('auth.checkEmail'))
   }
 
   return (
@@ -47,6 +51,7 @@ function SignIn() {
       <button type="button" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
         {mode === 'signin' ? t('auth.switchToSignUp') : t('auth.switchToSignIn')}
       </button>
+      {failed && <p role="alert">{t('auth.failed')}</p>}
       {message && <p role="status">{message}</p>}
     </form>
   )

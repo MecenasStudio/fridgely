@@ -11,31 +11,65 @@ type Props = {
 
 const PREFIX = 'sk-ant-'
 
+/**
+ * The view stays free of any network import, so an error raised by the API client is
+ * recognised by its `code` field (duck typing), not by `instanceof`.
+ */
+function errorCodeOf(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined
+  const code = (error as { code?: unknown }).code
+  return typeof code === 'string' ? code : undefined
+}
+
 export function SettingsView({ status, language, onSave, onClear, onLanguage }: Props) {
   const { t } = useTranslation()
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<'invalid' | 'failed' | null>(null)
+  const [clearing, setClearing] = useState(false)
+  const [saveError, setSaveError] = useState<'invalid' | 'rejected' | 'failed' | null>(null)
+  const [clearFailed, setClearFailed] = useState(false)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     // Local check first: a key that cannot be a Claude key never leaves the browser.
     if (!key.startsWith(PREFIX)) {
-      setError('invalid')
+      setSaveError('invalid')
       return
     }
     setSaving(true)
-    setError(null)
+    setSaveError(null)
     try {
       await onSave(key)
       // Drop the key from component state as soon as the server has it.
       setKey('')
-    } catch {
-      setError('failed')
+    } catch (error) {
+      setSaveError(errorCodeOf(error) === 'INVALID_KEY' ? 'rejected' : 'failed')
     } finally {
       setSaving(false)
     }
   }
+
+  async function clear() {
+    if (clearing) return
+    setClearing(true)
+    setClearFailed(false)
+    try {
+      await onClear()
+    } catch {
+      setClearFailed(true)
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  const saveMessage =
+    saveError === 'invalid'
+      ? t('settings.invalidKey')
+      : saveError === 'rejected'
+        ? t('settings.keyRejected')
+        : saveError === 'failed'
+          ? t('settings.saveFailed')
+          : null
 
   return (
     <section>
@@ -59,14 +93,15 @@ export function SettingsView({ status, language, onSave, onClear, onLanguage }: 
         </button>
       </form>
 
-      {error === 'invalid' && <p>{t('settings.invalidKey')}</p>}
-      {error === 'failed' && <p>{t('settings.saveFailed')}</p>}
+      {saving && <p role="status">{t('settings.saving')}</p>}
+      {saveMessage && <p role="alert">{saveMessage}</p>}
 
       {status.hasKey && (
-        <button type="button" onClick={() => onClear()}>
+        <button type="button" disabled={clearing} onClick={() => void clear()}>
           {t('settings.clear')}
         </button>
       )}
+      {clearFailed && <p role="alert">{t('settings.clearFailed')}</p>}
 
       <label>
         {t('settings.language')}{' '}

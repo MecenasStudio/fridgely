@@ -65,6 +65,42 @@ describe('BarcodeAdd', () => {
     expect(await screen.findByText('Product not found. Type the name yourself.')).toBeTruthy()
   })
 
+  it('alerts and keeps the found product when adding fails', async () => {
+    const onAdd = vi.fn(async () => {
+      throw new Error('insert failed')
+    })
+    renderAdd(async () => ({ name: 'Mleko' }), onAdd)
+
+    fireEvent.change(screen.getByLabelText('Barcode'), { target: { value: '12345678' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    await screen.findByText('Mleko')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('Could not add the product. Please try again.')
+    // Nothing is cleared, so a second click is the whole retry.
+    expect(screen.getByText('Mleko')).toBeTruthy()
+    expect((screen.getByLabelText('Barcode') as HTMLInputElement).value).toBe('12345678')
+  })
+
+  it('alerts and keeps the typed name when the manual add fails', async () => {
+    const onAdd = vi.fn(async () => {
+      throw new Error('insert failed')
+    })
+    renderAdd(async () => null, onAdd)
+
+    fireEvent.change(screen.getByLabelText('Barcode'), { target: { value: '00000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    await screen.findByText('Product not found. Type the name yourself.')
+
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Domowy ser' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(await screen.findByText('Could not add the product. Please try again.')).toBeTruthy()
+    expect((screen.getByLabelText('Product name') as HTMLInputElement).value).toBe('Domowy ser')
+  })
+
   it('hides the camera button when BarcodeDetector is missing', () => {
     expect('BarcodeDetector' in window).toBe(false)
     renderAdd(async () => null)
