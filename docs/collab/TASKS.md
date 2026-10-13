@@ -4,9 +4,71 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ---
 
+## Paczka zadań 18–24: zdjęcia (AI vision), scalanie produktów, PWA, reset hasła
+
+STATUS: TODO
+Gałąź (jedna na całą paczkę): `task/18-24-photo`, tworzona z aktualnego `main`.
+
+Zasady paczki jak w poprzednich (jeden commit na zadanie, kolejność 18 → 24, `npm test` i `npm run build` po każdym, osobny wpis w `REPORTS.md` na zadanie, zatrzymaj się po 24 albo na `BLOCKER`, błędy widoczne w UI przez `role="alert"`, brak nowych zależności, brak surowych komunikatów serwera). Wyjątek od reguły "nie ruszaj `supabase/`": zadania 18 i 19 edytują **wyłącznie** `supabase/functions/ai/*` (nie `_shared`, nie `migrations`, nie `save-key`). Wdrożenie funkcji robi Claude po przeglądzie, nie wdrażaj.
+
+### Zadanie 18: Funkcja `ai`, zadanie `recognize_photo`
+
+Files: `supabase/functions/ai/handler.ts`, `prompts.ts`, `index.ts`, `handler.test.ts`.
+
+Kontrakt (rozszerza istniejący; zadania `recipes_from_fridge` i `dinner_from_expiring` bez zmian):
+- Żądanie: `{ task: 'recognize_photo', locale: 'pl' | 'en', payload: { image: { mediaType: 'image/jpeg' | 'image/png' | 'image/webp', data: string } } }`, gdzie `data` to czyste base64 bez prefiksu `data:`. Limit: `data.length <= 7_000_000` i tylko znaki base64, inaczej `400 INVALID_REQUEST`.
+- Odpowiedź 200: `{ items: { name: string; quantity: number; unit: string; expiresOn: string | null }[] }`, maks. 50 pozycji, nazwy przechodzą to samo czyszczenie znaków sterujących co dziś, długość nazwy ≤ 100, jednostka ≤ 20, `quantity > 0` (brak lub zły → `1`), `unit` brak → `'szt'`, `expiresOn` tylko poprawna data `YYYY-MM-DD` albo `null`.
+- Prompt: rozpoznaj tylko produkty spożywcze widoczne na zdjęciu; **nie zgaduj dat**: `expiresOn` wpisz tylko, gdy data jest czytelna na etykiecie, inaczej `null`; odpowiedź w języku `locale`; tylko JSON o podanym kształcie.
+- `index.ts`: wywołanie Anthropic z blokiem `{ type: 'image', source: { type: 'base64', media_type, data } }` przed blokiem tekstowym. Obraz nie jest logowany, zapisywany ani zwracany; do `ai_usage` trafia to samo co dziś (bez treści).
+- Model, który zwróci nie-JSON lub zły kształt → `502 UPSTREAM_ERROR` (jak dziś). Typ wyniku handlera staje się unią odpowiedzi dla przepisów i dla zdjęć; zadania przepisowe muszą działać identycznie jak przed zmianą.
+
+Testy: poprawne zdjęcie → 200 z pozycjami; zły `mediaType`, zbyt duże `data`, znaki spoza base64, brak `image` → 400 i `callClaude` nie wywołane; data niepoprawna lub niewidoczna → `null`; nazwa z nową linią w jednej linii; ponad 50 pozycji → obcięte do 50 (albo 502; wybierz i opisz w raporcie); klucz i obraz nie występują w odpowiedzi ani w argumentach `recordUsage`; testy dotychczasowych zadań przechodzą bez zmian.
+
+### Zadanie 19: Funkcja `ai`, zadanie `read_label_date`
+
+Files: jak w zadaniu 18.
+
+Żądanie: `{ task: 'read_label_date', locale, payload: { image } }` (ten sam kształt `image` i limity). Odpowiedź 200: `{ expiresOn: string | null }`. Prompt: znajdź na zdjęciu etykiety datę przydatności ("najlepiej spożyć przed", "termin przydatności", "use by", "best before"); gdy jest wiele dat, zwróć tę związaną z terminem przydatności, nie datą produkcji; formaty dd.mm.rrrr, dd/mm/rr, rrrr-mm-dd, "mm.rrrr" (dla samego miesiąca użyj ostatniego dnia miesiąca); gdy nie widać daty, `null`. Walidacja wyniku jak w 18. Testy: data odczytana, `null`, niepoprawna data z modelu → `null`, błędne żądanie → 400.
+
+### Zadanie 20: Klient zdjęć
+
+Files: `src/lib/ai.ts` (dodaj, nie zmieniaj istniejącego), `src/lib/ai.test.ts`, nowe `src/lib/image.ts`, `src/lib/image.test.ts`.
+
+Interfejsy:
+- `recognizePhoto(image: PhotoPayload, locale: AiLocale): Promise<DetectedItem[]>` oraz `readLabelDate(image: PhotoPayload, locale: AiLocale): Promise<string | null>`; `PhotoPayload = { mediaType: 'image/jpeg' | 'image/png' | 'image/webp'; data: string }`; `DetectedItem = { name: string; quantity: number; unit: string; expiresOn: string | null }`. Te same `AiError` i mapowanie kodów co `askAi`.
+- `image.ts`: `prepareImage(file: Blob, deps?: { decode, encode }): Promise<PhotoPayload>`: zmniejsz dłuższy bok do 1280 px (bez powiększania), zakoduj jako JPEG jakość 0.8, zwróć base64 bez prefiksu. Dekodowanie i kodowanie (canvas/`createImageBitmap`) wstrzykiwane przez `deps`, żeby logikę wymiarów dało się przetestować bez przeglądarki: wyeksportuj czystą `fitWithin(width, height, max): { width: number; height: number }` z testami (pionowe, poziome, mniejsze niż limit, kwadrat, zero).
+
+### Zadanie 21: Dodawanie ze zdjęcia w lodówce
+
+Files: `src/features/fridge/PhotoImport.tsx` + `PhotoImport.test.tsx`, `src/features/fridge/FridgeView.tsx` (renderuj `<PhotoImport … />` obok `BarcodeAdd`), `src/features/fridge/FridgePage.tsx` (wstrzyknij `recognize`/`readDate`), `src/i18n/*.json`.
+
+Zachowanie: `<input type="file" accept="image/*" capture="environment">` ("Dodaj ze zdjęcia"); po wyborze pliku `prepareImage` → `recognize`. Wynik to **edytowalna lista** (nazwa, ilość, jednostka, data, przycisk "usuń z listy"), nic nie trafia do lodówki bez kliknięcia "Dodaj wszystko". Brak rozpoznanych produktów → komunikat i możliwość dodania ręcznego. `NO_API_KEY` → podpowiedź o Ustawieniach, `UNAUTHENTICATED` → sesja wygasła, inne błędy → ogólny komunikat. Stan ładowania w `role="status"`. Dodatkowo w `FridgeView` przy produktach bez daty przycisk "Odczytaj datę ze zdjęcia" (osobny `<input type="file">`): wynik `null` → komunikat "Nie znaleziono daty", sukces → `onUpdate(id, { expiresOn })` po potwierdzeniu użytkownika (pokaż odczytaną datę i przycisk "Zapisz"). Testy z wstrzykniętymi funkcjami: lista edytowalna, "Dodaj wszystko" woła `onAdd` dla każdej pozostałej pozycji, usunięta pozycja nie jest dodana, błędy, brak wyników.
+
+### Zadanie 22: Scalanie powtarzających się produktów
+
+Files: `src/domain/fridge.ts` (dodaj `findMergeTarget`) + test, `src/features/fridge/useFridge.ts`.
+
+Interfejs: `findMergeTarget(items: FridgeItem[], candidate: { name: string; unit: string; expiresOn: string | null }): FridgeItem | null` zwraca produkt o tej samej znormalizowanej nazwie i jednostce **i tej samej dacie ważności** (`null` równa się `null`); brak → `null`. W `useFridge.add`: gdy jest cel scalenia, zwiększ jego ilość (`update`), w przeciwnym razie wstaw nowy wiersz. Testy domenowe: ta sama nazwa różna wielkość liter/spacje, inna jednostka (brak scalenia), inna data (brak scalenia), `null` vs data, pusta lodówka.
+
+### Zadanie 23: PWA (instalacja na telefonie) i język dokumentu
+
+Files: `public/manifest.webmanifest`, `public/icon.svg`, `index.html` (tylko `<link rel="manifest">`, `<meta name="theme-color">`, `<link rel="icon">`), `src/i18n/index.ts` (zmiana `document.documentElement.lang` przy `languageChanged`) + test `src/i18n/lang.test.ts`.
+
+Manifest: `name: "Fridgely"`, `short_name`, `start_url: "/"`, `display: "standalone"`, `background_color`/`theme_color`, ikona `icon.svg` (`sizes: "any"`, `purpose: "any maskable"`), prosta własna grafika (np. zaokrąglony kwadrat z literą F). Bez service workera, bez cache'owania. Test: zmiana języka ustawia `document.documentElement.lang` na `pl`/`en`.
+
+### Zadanie 24: Reset hasła
+
+Files: `src/features/auth/AuthGate.tsx` (+ rozszerz `AuthGate.test.tsx`), `src/i18n/*.json`.
+
+W formularzu logowania link "Nie pamiętam hasła" → wywołuje `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })`, potwierdzenie `auth.resetSent` w `role="status"` (bez ujawniania, czy konto istnieje: ten sam komunikat dla każdego poprawnego e-maila), puste pole e-mail → komunikat walidacji. Obsługa zdarzenia `PASSWORD_RECOVERY` z `onAuthStateChange`: pokaż formularz nowego hasła (min. 6 znaków, dwa pola zgodne) wołający `supabase.auth.updateUser({ password })`, po sukcesie komunikat i normalne wejście do aplikacji. Testy z zamockowanym klientem: wysłanie resetu, walidacja pustego e-maila, formularz po `PASSWORD_RECOVERY`, niezgodne hasła nie wołają `updateUser`.
+
+---
+
 ## Paczka zadań 11–17: poprawki, braki funkcjonalne, testy i dokumentacja
 
-STATUS: READY FOR REVIEW (zadania 11–17 wykonane, patrz raporty 11–17 w `REPORTS.md`)
+STATUS: DONE (przegląd: ACCEPTED z drobnymi uwagami, scalone do main w bb4a9c2)
+
+Przegląd Claude: `npm test` 138/138, `npm run build` OK, brak zmian w `supabase/` i `package.json`, brak sekretów w README, wszystkie punkty z przeglądu 7–10 naprawione. Drobne, bez blokady: (a) przycisk "Dodaj braki" po sukcesie jest aktywny, więc podwójne kliknięcie duplikuje pozycje listy; (b) przenoszenie kupionych do lodówki nie łączy z istniejącym produktem o tej samej nazwie i jednostce (zadanie 22); (c) zmiana w `AuthGate.tsx` (lokalny komunikat zamiast surowego błędu serwera) jest zgodna z zasadą "nie pokazuj surowych komunikatów", zaakceptowana. Poprawek wykonawcy: 0 z 2.
 Gałąź (jedna na całą paczkę): `task/11-17-polish`, utworzona z `main` (commity `951b280`, `e6da7e7`, `3442e6f`, `f7c394d`, `571d19b`, `f6d200f`, `2dddf70`)
 
 Zasady paczki są takie same jak w paczce 7–10 (jeden commit na zadanie, kolejność 11 → 17, po każdym `npm test` i `npm run build`, osobny wpis w `REPORTS.md` na zadanie, zatrzymaj się po zadaniu 17 lub na `BLOCKER`). Dodatkowo:
