@@ -1,5 +1,6 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { findMergeTarget } from '../../domain/fridge'
 import type { FridgeItem } from '../../domain/types'
 import type { NewFridgeItem } from './FridgeItemForm'
 
@@ -38,6 +39,17 @@ export function useFridge(householdId: string) {
   }, [householdId, load])
 
   const add = async (item: NewFridgeItem) => {
+    // Adding the same product twice (same name, unit and date) tops up the existing row
+    // instead of creating a duplicate; the photo import and the barcode add both rely on it.
+    const target = findMergeTarget(items, item)
+    if (target) {
+      const { error } = await supabase
+        .from('fridge_items')
+        .update({ quantity: Number(target.quantity) + item.quantity })
+        .eq('id', target.id)
+      if (error) throw error
+      return
+    }
     const { error } = await supabase.from('fridge_items').insert({
       household_id: householdId, name: item.name, quantity: item.quantity, unit: item.unit, expires_on: item.expiresOn,
     })
