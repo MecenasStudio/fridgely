@@ -5,6 +5,7 @@
             },
     "common":  {
                    "loading":  "Ładowanie…",
+                   "skipToContent":  "Przejdź do treści",
                    "loadFailed":  "Nie udało się wczytać danych.",
                    "retry":  "Spróbuj ponownie",
                    "crashed":  "Coś poszło nie tak.",

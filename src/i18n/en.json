@@ -5,6 +5,7 @@
             },
     "common":  {
                    "loading":  "Loading…",
+                   "skipToContent":  "Skip to content",
                    "loadFailed":  "Could not load the data.",
                    "retry":  "Try again",
                    "crashed":  "Something went wrong.",
