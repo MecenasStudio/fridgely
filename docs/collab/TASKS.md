@@ -6,8 +6,8 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Paczka zadań 18–24: zdjęcia (AI vision), scalanie produktów, PWA, reset hasła
 
-STATUS: TODO
-Gałąź (jedna na całą paczkę): `task/18-24-photo`, tworzona z aktualnego `main`.
+STATUS: READY FOR REVIEW (zadania 18–24 wykonane, patrz raporty 18–24 w `REPORTS.md`)
+Gałąź (jedna na całą paczkę): `task/18-24-photo`, utworzona z `main` (commity `a89896c`, `8cb10e1`, `df2afd6`, `f2eef1d`, `c631ebf`, `e8df326`, `c25a076`)
 
 Zasady paczki jak w poprzednich (jeden commit na zadanie, kolejność 18 → 24, `npm test` i `npm run build` po każdym, osobny wpis w `REPORTS.md` na zadanie, zatrzymaj się po 24 albo na `BLOCKER`, błędy widoczne w UI przez `role="alert"`, brak nowych zależności, brak surowych komunikatów serwera). Wyjątek od reguły "nie ruszaj `supabase/`": zadania 18 i 19 edytują **wyłącznie** `supabase/functions/ai/*` (nie `_shared`, nie `migrations`, nie `save-key`). Wdrożenie funkcji robi Claude po przeglądzie, nie wdrażaj.
 

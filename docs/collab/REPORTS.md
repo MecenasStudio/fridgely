@@ -2,6 +2,126 @@
 
 Nowe wpisy dodawaj na górze, według szablonu z `docs/collab/README.md`.
 
+## Zadanie 24: Reset hasła  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `c25a0768420d27f1d7b4e4e726280ac5b465d9c5`
+Zmienione pliki: `src/features/auth/AuthGate.tsx`, `src/features/auth/AuthGate.test.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: w formularzu logowania jest link `auth.forgotPassword`, który woła `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })`. Pusty e-mail daje walidację `auth.resetNeedsEmail` i **nie** woła serwera, a każda inna odpowiedź (także błąd) kończy się tym samym komunikatem `auth.resetSent` w `role="status"` — ekran nie zdradza, czy konto istnieje. Nowy hook `usePasswordRecovery` nasłuchuje `PASSWORD_RECOVERY` z `onAuthStateChange` i pokazuje `PasswordResetForm` (dwa pola, min. 6 znaków, zgodność haseł) wołający `supabase.auth.updateUser({ password })`; po sukcesie widać `auth.passwordSaved` i użytkownik wchodzi do aplikacji, a błąd daje `auth.passwordFailed` bez surowego tekstu serwera. Walidacja dzieje się przed `updateUser`.
+
+Dowód:
+- `npm test` → `Test Files 24 passed (24)` / `Tests 188 passed (188)` (przed tym zadaniem 183/24); `✓ src/features/auth/AuthGate.test.tsx (9 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.10s`.
+- Testy (zamockowany klient, `vi.hoisted` + `vi.mock`): wysłanie resetu z `redirectTo: window.location.origin`, walidacja pustego e-maila (bez wywołania `resetPasswordForEmail`), formularz po `PASSWORD_RECOVERY` i zapis nowego hasła, niezgodne hasła i za krótkie hasło nie wołają `updateUser`, nieudana zmiana pokazuje komunikat ogólny (`weak password rejected` nieobecne w DOM). Zdarzenia auth wysyłam w `act(...)`, żeby nie było ostrzeżeń Reacta.
+- Dotychczasowe testy `AuthGate` (brak renderu przy nieznanej sesji, formularz bez sesji, dzieci z sesją, reakcja na `SIGNED_IN`) zostały i przechodzą.
+
+Decyzje własne: po zmianie hasła pokazuję potwierdzenie nad aplikacją (`AuthGate` renderuje dzieci w fragmencie), zamiast osobnego ekranu „gotowe" z przyciskiem. `PasswordResetForm` eksportuję z `AuthGate.tsx`, żeby dało się go testować bez kombinowania z sesją. Formularz resetu nie ma przycisku „wyloguj" ani powrotu — Supabase kończy tryb odzyskiwania sam po zmianie hasła. Nie zmieniałem `main.tsx` ani `App.tsx`; nowe klucze tylko w `pl.json` i `en.json`.
+
+Pytania / blockery: brak.
+
+## Zadanie 23: PWA (instalacja na telefonie) i język dokumentu  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `e8df32634aca3f17e5cb735f85bee836f8706f42`
+Zmienione pliki: `public/manifest.webmanifest` (nowy), `public/icon.svg` (nowy), `index.html` (3 linie w `<head>`), `src/i18n/index.ts`, `src/i18n/lang.test.ts` (nowy)
+
+Co zrobiłem: manifest ma `name`/`short_name` „Fridgely", `start_url` i `scope` `/`, `display: "standalone"`, `background_color` `#f6f7f9`, `theme_color` `#1f6f4a` oraz ikonę `icon.svg` z `sizes: "any"` i `purpose: "any maskable"`. Ikona to zaokrąglony kwadrat z literą F, narysowany ręcznie w SVG. W `index.html` dodałem tylko `<link rel="manifest">`, `<meta name="theme-color">` i `<link rel="icon">`. W `src/i18n/index.ts` doszła funkcja `applyDocumentLanguage`, która ustawia `document.documentElement.lang` na `pl` dla tagów zaczynających się od `pl` i na `en` dla reszty — wołana raz przy starcie i przy każdym `languageChanged`.
+
+Dowód:
+- `npm test` → `Test Files 24 passed (24)` / `Tests 183 passed (183)` (przed tym zadaniem 181/23); `✓ src/i18n/lang.test.ts (2 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 352ms`; w `dist/` są `manifest.webmanifest` (439 B) i `icon.svg` (288 B), a `dist/index.html` zawiera wszystkie trzy nowe elementy — czyli pliki faktycznie trafiają do builda, nie tylko leżą w repo.
+- Test języka: `pl` → `lang="pl"`, `en` → `lang="en"`, `pl-PL` → `pl`, `de` → `en`.
+
+Decyzje własne: nie ma service workera ani cache'owania (zgodnie ze zleceniem), więc instalacja działa, ale offline nie. Nie dodawałem plików PNG w różnych rozmiarach — jeden SVG z `sizes: "any"` i `purpose: "any maskable"` obsługuje oba przypadki, a grafika jest wektorowa. `orientation: "portrait-primary"` i `lang: "en"` w manifeście to wartości domyślne; `lang` dokumentu i tak ustawia i18n. Tła motywu wziąłem z `src/styles.css`, żeby pasek systemowy nie odcinał się od aplikacji.
+
+Pytania / blockery: nie mogę potwierdzić instalacji na prawdziwym telefonie — headless Chrome w tym środowisku nie startuje. Sprawdziłem tylko, że manifest i ikona są poprawnie serwowane w buildzie.
+
+## Zadanie 22: Scalanie powtarzających się produktów  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `c631ebfdb10d8206806f6003cd834f9a6ff77f44`
+Zmienione pliki: `src/domain/fridge.ts` (+ `MergeCandidate`, `findMergeTarget`), `src/domain/fridge.test.ts`, `src/features/fridge/useFridge.ts`
+
+Co zrobiłem: `findMergeTarget(items, candidate)` zwraca produkt o tej samej znormalizowanej nazwie, tej samej jednostce **i tej samej dacie** (`null` równa się tylko `null`), albo `null`. `useFridge.add` najpierw szuka celu scalenia: jeśli jest, robi `update` z `quantity = istniejąca + dodawana`, w przeciwnym razie wstawia nowy wiersz. Dzięki temu „Dodaj wszystko" ze zdjęcia, kod kreskowy i zwykły formularz nie tworzą duplikatów.
+
+Dowód:
+- `npm test` → `Test Files 23 passed (23)` / `Tests 181 passed (181)` (przed tym zadaniem 177/23); `✓ src/domain/fridge.test.ts (7 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 338ms`.
+- Testy domenowe: ta sama nazwa z inną wielkością liter i dodatkowymi spacjami, `null` vs data w obie strony, inna jednostka → brak scalenia, inna data → brak scalenia, pusta lodówka → `null`.
+
+Decyzje własne: data jest częścią tożsamości produktu, bo „mleko bez daty" i „mleko do piątku" to dla planowania dwa różne zapasy — opisałem to w komentarzu przy funkcji. Dodatkowo znormalizowałem `quantity` przez `Number(...)` przy scalaniu, bo Supabase potrafi zwrócić `numeric` jako string. Świadomie nie zmieniałem `useShopping.addMany` ani przenoszenia kupionych: one też korzystają z `useFridge.add`, więc scalanie działa tam automatycznie (to domyka uwagę (b) z przeglądu 11–17).
+
+Pytania / blockery: brak.
+
+## Zadanie 21: Dodawanie ze zdjęcia w lodówce  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `f2eef1d9e58247cf3219ff31067201fdb140dc3d`
+Zmienione pliki: `src/features/fridge/PhotoImport.tsx` + `PhotoImport.test.tsx` (nowe), `src/features/fridge/FridgeView.tsx`, `FridgeView.test.tsx`, `src/features/fridge/FridgePage.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `PhotoImport` ma pole `<input type="file" accept="image/*" capture="environment">` („Dodaj ze zdjęcia"); po wyborze pliku robi `prepare` → `recognize` i pokazuje **edytowalną listę** (nazwa, ilość, jednostka, data, „usuń z listy"). Nic nie trafia do lodówki bez kliknięcia „Dodaj wszystko", które woła `onAdd` dla każdego pozostałego wiersza. Brak rozpoznanych produktów → komunikat `photo.empty` i możliwość dodania ręcznego (formularz i kod kreskowy są obok), `NO_API_KEY` → `photo.noKey`, `UNAUTHENTICATED` → `photo.sessionExpired`, inne błędy → `photo.failed`, ładowanie w `role="status"`, błędy w `role="alert"`. Osobny przycisk `ReadDateButton` przy każdym produkcie otwiera drugie pole pliku: wynik `null` → `photo.noDate`, sukces → pokazuje odczytaną datę i zapisuje ją dopiero po kliknięciu „Zapisz datę" (`onUpdateDate`). `FridgePage` wstrzykuje prawdziwe `recognizePhoto`/`readLabelDate` i język; `prepare` domyślnie woła `prepareImage` (dynamiczny import, żeby testy nie potrzebowały canvasu).
+
+Dowód:
+- `npm test` → `Test Files 23 passed (23)` / `Tests 177 passed (177)` (przed tym zadaniem 168/22); `✓ src/features/fridge/PhotoImport.test.tsx (9 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.11s`.
+- Testy (wszystko wstrzyknięte, bez sieci): lista edytowalna + „Dodaj wszystko" woła `onAdd` dla każdej pozycji z poprawioną nazwą, usunięta pozycja nie jest dodana, pusty wynik → komunikat bez przycisku, mapowanie trzech klas błędów (z surowym tekstem nieobecnym w DOM), nieudane dodanie zostawia listę, odczyt daty zapisuje się dopiero po potwierdzeniu, brak daty i nieudany zapis, stan ładowania, obecność pól wiersza.
+
+Decyzje własne: po nieudanym dodaniu zostawiam listę i pola bez zmian (ponowienie to jedno kliknięcie) — spójne z zasadą z poprzedniej paczki. Wybór produktu do odczytu daty trzyma `FridgeView` (`dateTarget`), bo przycisk jest przy wierszu, a panel z polem pliku jeden. Po zapisaniu daty czyszczę odczytany stan. Do `FridgeView.test.tsx` doszedłem tylko z mockiem `lib/supabase` — `PhotoImport` importuje `lib/ai.ts`, które bez zmiennych środowiskowych rzuca przy imporcie; to ten sam wzorzec, co w pozostałych testach widoków.
+
+Pytania / blockery: brak.
+
+## Zadanie 20: Klient zdjęć  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `df2afd67438e0624a54867157917f83bcb2ea0a4`
+Zmienione pliki: `src/lib/ai.ts` (rozszerzony), `src/lib/ai.test.ts`, `src/lib/image.ts` (nowy), `src/lib/image.test.ts` (nowy)
+
+Co zrobiłem: `recognizePhoto(image, locale)` i `readLabelDate(image, locale)` w `src/lib/ai.ts` używają tego samego transportu co `askAi` (wydzieliłem prywatne `callAi`, więc mapowanie kodów, brak sesji i błędy sieci są wspólne) i tego samego `AiError`. `AiTask` rozszerzyłem o dwa zadania zdjęciowe, dodałem `PhotoPayload`, `ImageMediaType` i `DetectedItem`. `image.ts` eksportuje czystą `fitWithin(width, height, max)` (bez powiększania, proporcje zachowane, zaokrąglenie do pełnych pikseli, zero dla złych wymiarów) oraz `prepareImage(file, deps)`, która dekoduje (domyślnie `createImageBitmap`), skaluje do 1280 px dłuższego boku, koduje JPEG 0.8 przez canvas i zwraca base64 bez prefiksu `data:`.
+
+Dowód:
+- `npm test` → `Test Files 22 passed (22)` / `Tests 168 passed (168)` (przed tym zadaniem 151/21); `✓ src/lib/image.test.ts (10 tests)`, `✓ src/lib/ai.test.ts (20 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 336ms`.
+- Testy `fitWithin`: poziome, pionowe, mniejsze niż limit (bez powiększania), kwadrat, zero/NaN, cienki obraz (nie zapada się do 0 px). Testy `prepareImage`: dekodowanie → skala → JPEG z jakością 0.8 i base64 bez prefiksu (bajty sprawdzone przez `atob`), obraz mieszczący się bez zmian, zerowy rozmiar → błąd bez kodowania. Testy klienta: kształt żądania dla obu zadań, zwrot listy/daty, `null` z etykiety, odrzucenie uszkodzonej listy i złego ciała, mapowanie `NO_API_KEY`/`INVALID_REQUEST`.
+
+Decyzje własne: `prepareImage` przyjmuje `deps` (`decode`/`encode`) jako drugi argument, a `PhotoImport` dostaje `prepare` w propsach — dzięki temu testy widoku nie potrzebują canvasu ani `createImageBitmap`. Rozdzielenie na `image.ts` trzyma `ai.ts` bez zależności od DOM. Base64 koduję porcjami po 8192 bajty, żeby nie przekroczyć limitu argumentów `String.fromCharCode`. Nie dodawałem żadnej zależności do kodowania obrazów.
+
+Pytania / blockery: brak.
+
+## Zadanie 19: Funkcja `ai`, zadanie `read_label_date`  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `8cb10e1c9f864dc566147dae73c185af755a73cd`
+Zmienione pliki: `supabase/functions/ai/handler.test.ts` (walidacja i prompt zadania pochodzą z commita zadania 18, patrz „Decyzje własne")
+
+Co zrobiłem: `read_label_date` przyjmuje ten sam kształt `image` i te same limity co `recognize_photo`, a zwraca `{ expiresOn: string | null }`. Prompt (`imagePrompt`) każe szukać „najlepiej spożyć przed", „termin przydatności do spożycia", „use by", „best before"; gdy dat jest kilka — wybrać datę przydatności, nigdy daty produkcji; akceptuje `dd.mm.rrrr`, `dd/mm/rr`, `rrrr-mm-dd` i `mm.rrrr` (dla miesiąca bez dnia: ostatni dzień miesiąca); bez czytelnej daty → `null`, bez zgadywania. Wynik przechodzi przez `parseLabelDate`, który przyjmuje tylko prawdziwą datę `YYYY-MM-DD` albo `null` — data niepoprawna z modelu (np. `2026-02-31`, `30.11.2026`, pusty string) staje się `null`, a nie błędem ani zgadywaniem. Nie-JSON → `502`.
+
+Dowód:
+- `npm test` → `Test Files 21 passed (21)` / `Tests 151 passed (151)` (przed tym zadaniem 145/21); `✓ supabase/functions/ai/handler.test.ts (30 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.35s`.
+- Testy: odczytana data → 200 + `recordUsage` z `task: 'read_label_date'`, `null` i brak pola → 200 `{ expiresOn: null }`, trzy warianty niepoprawnej daty → `null`, odpowiedź tekstowa → 502, trzy błędne żądania (brak `image`, zły `mediaType`, spacja w base64) → 400 **bez** wywołania `claude`, oraz kontrola treści promptu (frazy o dacie przydatności i formatach) i obecność obrazu w wywołaniu.
+
+Decyzje własne: parser, prompty i obsługa obu zadań zdjęciowych powstały w zadaniu 18, bo handler i prompty są wspólne dla obu — zadanie 19 dostarczyło więc walidację zachowania (i poprawki, jeśli testy coś wykryły; nie wykryły). Data z modelu w formacie `30.11.2026` celowo daje `null`, a nie konwersję: prompt wymaga `YYYY-MM-DD`, a przepisywanie formatów po stronie serwera byłoby zgadywaniem, którego specyfikacja zabrania. `expiresOn` spoza typu string (np. liczba) jest traktowane jak brak daty.
+
+Pytania / blockery: brak.
+
+## Zadanie 18: Funkcja `ai`, zadanie `recognize_photo`  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `a89896c3d1984209ecb7fa5eba6a5dac48eb9d30`
+Zmienione pliki: `supabase/functions/ai/handler.ts`, `prompts.ts`, `index.ts`, `handler.test.ts`
+
+Co zrobiłem: handler rozpoznaje cztery zadania (`AiRequest` i `AiResponse` to teraz unie), a `recognize_photo` przyjmuje `payload.image` = `{ mediaType: 'image/jpeg'|'image/png'|'image/webp', data }` z czystym base64: długość ≤ 7 000 000 znaków, poprawność base64 sprawdzana porcjami po 8192 znaki (jeden regex na 7 MB potrafi wybuchnąć), zły `mediaType`, prefiks `data:`, znaki spoza base64 i brak `image` → `400 INVALID_REQUEST` bez wywołania Claude. Wynik przechodzi przez `parseDetectedItems`: brak/ujemna ilość → `1`, brak jednostki → `szt`, data nieczytelna lub niepoprawna → `null`, nazwa czyszczona tym samym `sanitizeName` co dziś i przycinana do 100 znaków, jednostka do 20, a ponad 50 pozycji jest **obcinane do 50** (wybór opisany niżej). `index.ts` wysyła obraz jako pierwszy blok `{ type: 'image', source: { type: 'base64', media_type, data } }`, potem tekst; obraz nie jest logowany, zapisywany ani zwracany, a `ai_usage` dostaje tylko `user_id`, `task` i tokeny.
+
+Dowód:
+- `npm test` → `Test Files 21 passed (21)` / `Tests 145 passed (145)` (przed tym zadaniem 138/21); `✓ supabase/functions/ai/handler.test.ts (24 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 4.01s`.
+- Testy: poprawne zdjęcie → 200 z pozycjami i `recordUsage` z `task: 'recognize_photo'`, sześć błędnych `image` → 400 bez wywołania Claude, naprawianie niechlujnych pól (nazwa z nową linią i spacjami, `quantity: -3`/`"duzo"`, pusty i za długi `unit`, `2026-02-31`), `60` pozycji → `50`, trzy kształty nie-JSON → 502, obraz i klucz nieobecne w odpowiedzi i w argumencie `recordUsage`. Wszystkie testy zadań przepisowych przechodzą bez zmian.
+
+Decyzje własne: przy ponad 50 pozycjach **obcinam do 50** zamiast zwracać 502 — model zwykle nie przekracza limitu, a gdy to zrobi, lista 50 produktów jest dla użytkownika użyteczna, a nie jest to błąd modelu. Nazwa dłuższa niż 100 znaków jest przycinana (a nie odrzucana), bo to wynik modelu, nie dane użytkownika; surowe odrzucenie psułoby całe zdjęcie z powodu jednego długiego napisu. Wartości `expiresOn` spoza `YYYY-MM-DD` stają się `null` — nigdy nie zgadujemy dat. Walidacja żądania (twarde limity) i naprawianie wyniku (miękkie) to celowo dwa różne tryby.
+
+Pytania / blockery: brak.
+
 ## Zadanie 17: README  —  2026-10-12
 
 STATUS: READY FOR REVIEW
