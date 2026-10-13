@@ -55,7 +55,7 @@ export function useFridge(householdId: string) {
     const channel = supabase
       .channel(`fridge:${householdId}`)
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'fridge_items', filter: `household_id=${householdId}` },
+        { event: '*', schema: 'public', table: 'fridge_items', filter: `household_id=eq.${householdId}` },
         () => { load() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }

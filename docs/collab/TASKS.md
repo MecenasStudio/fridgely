@@ -6,7 +6,12 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Paczka zadań 18–24: zdjęcia (AI vision), scalanie produktów, PWA, reset hasła
 
-STATUS: READY FOR REVIEW (zadania 26–39 wykonane, patrz podsumowanie i raporty 26–39 w `REPORTS.md`)
+STATUS: DONE (przegląd: ACCEPTED z uwagami, poprawki 18–24 zweryfikowane, zadania 26–39 przyjęte)
+
+Przegląd Claude: `npm test` 277/277, `npm run build` OK, zero zmian w `supabase/`, `package.json`, `.env*`. Poprawki z przeglądu 18–24 zrobione prawidłowo, razem z testami. Uwagi:
+1. **Regresja (naprawił Claude):** w `3b8d186` filtr Realtime lodówki zmienił się z `household_id=eq.<id>` na `household_id=<id>` (zła składnia, lodówka przestawała się odświeżać na żywo), poza zakresem poprawki i bez testu. Poprawiona linia; w kolejnej paczce zadanie 40 dodaje test pilnujący filtrów wszystkich hooków. Poprawek wykonawcy: 1 z 2.
+2. **Znane ryzyko "Ugotowane"** (`PlanPage.consume`): zapis to pętla osobnych aktualizacji. Przy błędzie w środku część wierszy jest już odjęta, a ponowny podgląd liczy od nowego stanu, więc ponowienie odejmie składniki drugi raz. Zadanie 41 (podgląd jest z migawki, a po błędzie pokazujemy komunikat i wymuszamy odświeżenie lodówki zanim pozwolimy ponowić).
+3. Wiersze dodane w tej sesji mają lokalne id `local-N` do czasu odświeżenia z Realtime. Edycja takiego wiersza przed odświeżeniem kończy się błędem (widocznym). Zaakceptowane.
 
 ### Przegląd Claude: paczka 18–24 (poprawki: 1 z 2 dozwolonych)
 
