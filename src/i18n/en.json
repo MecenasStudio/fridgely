@@ -6,7 +6,8 @@
     "common":  {
                    "loading":  "Loading…",
                    "loadFailed":  "Could not load the data.",
-                   "retry":  "Try again"
+                   "retry":  "Try again",
+                   "crashed":  "Something went wrong."
                },
     "nav":  {
                 "fridge":  "Fridge",

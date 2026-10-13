@@ -6,7 +6,8 @@
     "common":  {
                    "loading":  "Ładowanie…",
                    "loadFailed":  "Nie udało się wczytać danych.",
-                   "retry":  "Spróbuj ponownie"
+                   "retry":  "Spróbuj ponownie",
+                   "crashed":  "Coś poszło nie tak."
                },
     "nav":  {
                 "fridge":  "Lodówka",

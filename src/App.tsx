@@ -9,6 +9,7 @@ import { RecipesPage } from './features/recipes/RecipesPage'
 import { PlanPage } from './features/plan/PlanPage'
 import { ShoppingPage } from './features/shopping/ShoppingPage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { ErrorBoundary } from './features/common/ErrorBoundary'
 import { supabase } from './lib/supabase'
 
 const TABS = ['fridge', 'recipes', 'plan', 'shopping', 'ai', 'settings'] as const
@@ -34,12 +35,14 @@ function Home({ userId }: { userId: string }) {
           ))}
         </nav>
       </header>
-      {tab === 'fridge' && <FridgePage householdId={id} />}
-      {tab === 'recipes' && <RecipesPage householdId={id} />}
-      {tab === 'plan' && <PlanPage householdId={id} />}
-      {tab === 'shopping' && <ShoppingPage householdId={id} />}
-      {tab === 'ai' && <AiPage householdId={id} />}
-      {tab === 'settings' && <SettingsPage userId={userId} />}
+      <ErrorBoundary key={tab}>
+        {tab === 'fridge' && <FridgePage householdId={id} />}
+        {tab === 'recipes' && <RecipesPage householdId={id} />}
+        {tab === 'plan' && <PlanPage householdId={id} />}
+        {tab === 'shopping' && <ShoppingPage householdId={id} />}
+        {tab === 'ai' && <AiPage householdId={id} />}
+        {tab === 'settings' && <SettingsPage userId={userId} />}
+      </ErrorBoundary>
       <footer>
         <button type="button" onClick={() => supabase.auth.signOut()}>{t('auth.signOut')}</button>
       </footer>
