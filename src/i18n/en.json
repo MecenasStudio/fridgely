@@ -55,7 +55,11 @@
                     "steps":  "Steps, one per line",
                     "add":  "Add recipe",
                     "empty":  "No recipes yet.",
-                    "delete":  "Delete"
+                    "delete":  "Delete",
+                    "confirmDelete":  "Really delete?",
+                    "showSteps":  "Show steps",
+                    "addFailed":  "Could not add the recipe. Please try again.",
+                    "deleteFailed":  "Could not delete the recipe. Please try again."
                 },
     "plan":  {
                  "randomize":  "Randomize week",

@@ -55,7 +55,11 @@
                     "steps":  "Kroki, jeden w linii",
                     "add":  "Dodaj przepis",
                     "empty":  "Brak przepisów.",
-                    "delete":  "Usuń"
+                    "delete":  "Usuń",
+                    "confirmDelete":  "Na pewno?",
+                    "showSteps":  "Pokaż kroki",
+                    "addFailed":  "Nie udało się dodać przepisu. Spróbuj ponownie.",
+                    "deleteFailed":  "Nie udało się usunąć przepisu. Spróbuj ponownie."
                 },
     "plan":  {
                  "randomize":  "Losuj tydzień",
