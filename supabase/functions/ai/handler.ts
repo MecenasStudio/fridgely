@@ -5,20 +5,24 @@
 // is testable off-line. `index.ts` wires the real Deno/Supabase implementations.
 
 // Deno (like a browser) needs the explicit extension for relative imports.
-import { buildPrompt, systemPrompt } from './prompts.ts'
-import type { AiLocale, AiTask, FridgeItem, Recipe } from './prompts.ts'
+import { buildPrompt, imagePrompt, systemPrompt } from './prompts.ts'
+import type { AiLocale, AiTask, DetectedItem, FridgeItem, Recipe } from './prompts.ts'
 
-export type { AiLocale, AiTask, FridgeItem, Recipe } from './prompts.ts'
+export type { AiLocale, AiTask, DetectedItem, FridgeItem, Recipe } from './prompts.ts'
 
 export type AiErrorCode = 'UNAUTHENTICATED' | 'INVALID_REQUEST' | 'NO_API_KEY' | 'UPSTREAM_ERROR'
 
-export type AiRequest = {
-  task: AiTask
-  locale: AiLocale
-  payload: { fridge: FridgeItem[] }
-}
+export type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp'
+export type PhotoPayload = { mediaType: ImageMediaType; data: string }
 
-export type AiResponse = { recipe: Recipe }
+export type AiRequest =
+  | { task: 'recipes_from_fridge' | 'dinner_from_expiring'; locale: AiLocale; payload: { fridge: FridgeItem[] } }
+  | { task: 'recognize_photo' | 'read_label_date'; locale: AiLocale; payload: { image: PhotoPayload } }
+
+export type AiResponse =
+  | { recipe: Recipe }
+  | { items: DetectedItem[] }
+  | { expiresOn: string | null }
 export type AiErrorResponse = { error: AiErrorCode }
 
 export type StoredKey = { ciphertext: string; last4: string }
@@ -28,6 +32,8 @@ export type ClaudeCall = {
   system: string
   task: AiTask
   locale: AiLocale
+  /** Vision tasks send the photo alongside the text; recipe tasks leave it out. */
+  image?: PhotoPayload
 }
 export type ClaudeResult = { text: string; inputTokens: number; outputTokens: number }
 export type UsageRow = {
@@ -55,9 +61,15 @@ type HandlerResult = { status: number; body: AiResponse | AiErrorResponse }
 const MAX_FRIDGE_ITEMS = 100
 const MAX_NAME_LENGTH = 100
 const MAX_UNIT_LENGTH = 20
-const TASKS: AiTask[] = ['recipes_from_fridge', 'dinner_from_expiring']
+const MAX_DETECTED_ITEMS = 50
+const MAX_IMAGE_BASE64_LENGTH = 7_000_000
+const RECIPE_TASKS = ['recipes_from_fridge', 'dinner_from_expiring'] as const
+const PHOTO_TASKS = ['recognize_photo', 'read_label_date'] as const
+const TASKS: AiTask[] = [...RECIPE_TASKS, ...PHOTO_TASKS]
+const MEDIA_TYPES: ImageMediaType[] = ['image/jpeg', 'image/png', 'image/webp']
 const LOCALES: AiLocale[] = ['pl', 'en']
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+const BASE64_CHUNK = /^[A-Za-z0-9+/]*={0,2}$/
 
 function fail(status: number, error: AiErrorCode): HandlerResult {
   return { status, body: { error } }
@@ -103,6 +115,30 @@ function parseFridgeItem(value: unknown): FridgeItem {
   return { name: clean, quantity, unit: cleanUnit, expiresOn: expiresOn as string | null }
 }
 
+/**
+ * Base64 with no `data:` prefix. Checked in chunks: a 7 MB string in one regex call
+ * risks overflowing the matcher, and the length is already capped before we get here.
+ */
+function isBase64(value: string): boolean {
+  if (value.length === 0 || value.length % 4 !== 0) return false
+  for (let i = 0; i < value.length; i += 8192) {
+    if (!BASE64_CHUNK.test(value.slice(i, i + 8192))) return false
+  }
+  return true
+}
+
+function parseImage(value: unknown): PhotoPayload {
+  if (!isRecord(value)) throw new Error('image must be an object')
+  const { mediaType, data } = value
+  if (typeof mediaType !== 'string' || !MEDIA_TYPES.includes(mediaType as ImageMediaType)) {
+    throw new Error('bad mediaType')
+  }
+  if (typeof data !== 'string') throw new Error('image data must be a string')
+  if (data.length > MAX_IMAGE_BASE64_LENGTH) throw new Error('image too large')
+  if (!isBase64(data)) throw new Error('image data must be base64')
+  return { mediaType: mediaType as ImageMediaType, data }
+}
+
 /** Validates the request body. Throws when anything is malformed. */
 export function parseRequest(value: unknown): AiRequest {
   if (!isRecord(value)) throw new Error('body must be a JSON object')
@@ -110,10 +146,25 @@ export function parseRequest(value: unknown): AiRequest {
   if (!TASKS.includes(task as AiTask)) throw new Error('unknown task')
   if (!LOCALES.includes(locale as AiLocale)) throw new Error('unknown locale')
   if (!isRecord(payload)) throw new Error('payload must be an object')
+
+  const parsedLocale = locale as AiLocale
+
+  if ((PHOTO_TASKS as readonly string[]).includes(task as string)) {
+    return {
+      task: task as 'recognize_photo' | 'read_label_date',
+      locale: parsedLocale,
+      payload: { image: parseImage(payload.image) },
+    }
+  }
+
   const { fridge } = payload
   if (!Array.isArray(fridge)) throw new Error('payload.fridge must be an array')
   if (fridge.length > MAX_FRIDGE_ITEMS) throw new Error('too many fridge items')
-  return { task: task as AiTask, locale: locale as AiLocale, payload: { fridge: fridge.map(parseFridgeItem) } }
+  return {
+    task: task as 'recipes_from_fridge' | 'dinner_from_expiring',
+    locale: parsedLocale,
+    payload: { fridge: fridge.map(parseFridgeItem) },
+  }
 }
 
 /** Ascending by expiry, items without a date last; never mutates the input. */
@@ -180,6 +231,50 @@ function tokenCount(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0
 }
 
+/** Truncates with a marker, so a too-long string is visible rather than silently cut. */
+function clip(value: string, max: number): string {
+  return value.length <= max ? value : value.slice(0, max)
+}
+
+/**
+ * One product from a photo. Unlike the request body, a sloppy field is repaired
+ * instead of rejected: a missing quantity becomes 1, a missing unit "szt", an
+ * unreadable date null, and an over-long name is clipped. A wrong date is never
+ * invented, it is dropped.
+ */
+function parseDetectedItem(value: unknown): DetectedItem {
+  if (!isRecord(value)) throw new Error('product must be an object')
+  const { name, quantity, unit, expiresOn } = value
+  if (typeof name !== 'string') throw new Error('bad product name')
+  const clean = clip(sanitizeName(name), MAX_NAME_LENGTH)
+  if (clean.length === 0) throw new Error('bad product name')
+
+  const parsedQuantity =
+    typeof quantity === 'number' && Number.isFinite(quantity) && quantity > 0 ? quantity : 1
+  const cleanUnit = clip(typeof unit === 'string' ? sanitizeName(unit) : '', MAX_UNIT_LENGTH) || 'szt'
+  const parsedExpiry =
+    typeof expiresOn === 'string' && isValidDate(expiresOn) ? expiresOn : null
+
+  return { name: clean, quantity: parsedQuantity, unit: cleanUnit, expiresOn: parsedExpiry }
+}
+
+/** Model output of `recognize_photo`; over 50 items are dropped, not a 502. */
+export function parseDetectedItems(text: string): DetectedItem[] {
+  const value = extractJsonObject(text)
+  if (!isRecord(value) || !Array.isArray(value.items)) throw new Error('model output has no items array')
+  return value.items.slice(0, MAX_DETECTED_ITEMS).map(parseDetectedItem)
+}
+
+/** Model output of `read_label_date`: a valid date or null, never a guessed or broken one. */
+export function parseLabelDate(text: string): string | null {
+  const value = extractJsonObject(text)
+  if (!isRecord(value)) throw new Error('model output is not an object')
+  const { expiresOn } = value
+  if (expiresOn === null || expiresOn === undefined) return null
+  if (typeof expiresOn !== 'string') throw new Error('bad expiresOn')
+  return isValidDate(expiresOn) ? expiresOn : null
+}
+
 function bearerToken(req: { headers: { get(name: string): string | null } }): string | null {
   const header = req.headers.get('authorization') ?? req.headers.get('Authorization')
   if (!header) return null
@@ -236,30 +331,44 @@ export async function handle(
   }
   if (typeof key !== 'string' || key.length === 0) return fail(409, 'NO_API_KEY')
 
-  const fridge = sortByExpiry(request.payload.fridge)
   const today = new Date().toISOString().slice(0, 10)
 
   let answer: ClaudeResult
   try {
-    answer = await deps.callClaude({
-      key,
-      prompt: buildPrompt(request.task, request.locale, fridge, today),
-      system: systemPrompt(request.locale),
-      task: request.task,
-      locale: request.locale,
-    })
+    answer =
+      request.task === 'recognize_photo' || request.task === 'read_label_date'
+        ? await deps.callClaude({
+            key,
+            prompt: imagePrompt(request.task, request.locale, today),
+            system: systemPrompt(request.locale),
+            task: request.task,
+            locale: request.locale,
+            image: request.payload.image,
+          })
+        : await deps.callClaude({
+            key,
+            prompt: buildPrompt(request.task, request.locale, sortByExpiry(request.payload.fridge), today),
+            system: systemPrompt(request.locale),
+            task: request.task,
+            locale: request.locale,
+          })
   } catch {
     return fail(502, 'UPSTREAM_ERROR')
   }
 
-  let recipe: Recipe
+  let body: AiResponse
   try {
-    recipe = parseRecipe(answer.text)
+    body =
+      request.task === 'recognize_photo'
+        ? { items: parseDetectedItems(answer.text) }
+        : request.task === 'read_label_date'
+          ? { expiresOn: parseLabelDate(answer.text) }
+          : { recipe: parseRecipe(answer.text) }
   } catch {
     return fail(502, 'UPSTREAM_ERROR')
   }
 
-  // Usage is best-effort: a bookkeeping failure must not cost the user their recipe.
+  // Usage is best-effort: a bookkeeping failure must not cost the user their answer.
   try {
     await deps.recordUsage({
       userId: user.id,
@@ -271,5 +380,5 @@ export async function handle(
     // ignore
   }
 
-  return { status: 200, body: { recipe } }
+  return { status: 200, body }
 }
