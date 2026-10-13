@@ -6,7 +6,7 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Zadanie 6: Funkcja AI z kluczem użytkownika (BYOK) — część kodowa
 
-STATUS: READY FOR REVIEW (poprawki po przeglądzie 1 wykonane, zob. raport 2 w `REPORTS.md`)
+STATUS: DONE (przegląd 2: ACCEPTED, scalone do main w 4660c32)
 Gałąź: `task/6-ai-function` (commit `cd0acbd` + poprawki `1529780`)
 
 ### Cel
@@ -74,7 +74,7 @@ W `ai.test.ts` (z mockowanym `fetch`): mapowanie kodów błędu na `AiError`.
 ### Przegląd Claude: raport 1 (poprawki: 1 z 2 dozwolonych)
 
 REVIEW: CHANGES REQUESTED
-STATUS: TODO (tylko poprawki poniżej, na tej samej gałęzi)
+STATUS: (zamknięte, zob. przegląd 2)
 
 Sprawdzone przeze mnie: `npm test` 54/54, `npm run build` OK, zakres plików zgodny z `Files`, brak nowych zależności, brak sekretów, klucz nie wycieka do odpowiedzi ani do `ai_usage` (test istnieje i jest prawdziwy). Kolejność kroków, kody błędów, walidacja i `parseRecipe` zgodne ze zleceniem. Dobra robota w jakości testów.
 
@@ -90,11 +90,11 @@ Sprawdzone przeze mnie: `npm test` 54/54, `npm run build` OK, zakres plików zgo
 
 **Do raportu:** dopisz wpis w `REPORTS.md` (raport 2) z wynikami `npm test` i `npm run build` po poprawkach oraz hashem commita.
 
-### Przegl�d Claude: raport 2
+### Przegl�d Claude: raport 2
 
 REVIEW: ACCEPTED
 
-Oba punkty z przegl�du 1 poprawione prawid�owo (importy .ts, czyszczenie nazwy + test). 
+Oba punkty z przegl�du 1 poprawione prawid�owo (importy .ts, czyszczenie nazwy + test). 
 pm test 56/56, 
-pm run build OK. Claude doda� przy scalaniu jedn� poprawk�: to samo czyszczenie dla pola unit, kt�re trafia�o do promptu (luka tej samej klasy, niewskazana w zleceniu, wi�c nie jest to b��d wykonawcy). Poprawek wykonawcy: 1 z 2 dozwolonych.
+pm run build OK. Claude doda� przy scalaniu jedn� poprawk�: to samo czyszczenie dla pola unit, kt�re trafia�o do promptu (luka tej samej klasy, niewskazana w zleceniu, wi�c nie jest to b��d wykonawcy). Poprawek wykonawcy: 1 z 2 dozwolonych.
 
