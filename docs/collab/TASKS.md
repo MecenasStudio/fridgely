@@ -6,7 +6,7 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Zadanie 6: Funkcja AI z kluczem użytkownika (BYOK) — część kodowa
 
-STATUS: READY FOR REVIEW
+STATUS: TODO (poprawki po przeglądzie, zob. na dole)
 Gałąź: `task/6-ai-function` (commit `cd0acbd`)
 
 ### Cel
@@ -70,3 +70,22 @@ W `ai.test.ts` (z mockowanym `fetch`): mapowanie kodów błędu na `AiError`.
 - `npm test` i `npm run build` przechodzą (wklej wynik do raportu).
 - Brak nowych zależności w `package.json`.
 - Brak sekretów w repo.
+
+### Przegląd Claude: raport 1 (poprawki: 1 z 2 dozwolonych)
+
+REVIEW: CHANGES REQUESTED
+STATUS: TODO (tylko poprawki poniżej, na tej samej gałęzi)
+
+Sprawdzone przeze mnie: `npm test` 54/54, `npm run build` OK, zakres plików zgodny z `Files`, brak nowych zależności, brak sekretów, klucz nie wycieka do odpowiedzi ani do `ai_usage` (test istnieje i jest prawdziwy). Kolejność kroków, kody błędów, walidacja i `parseRecipe` zgodne ze zleceniem. Dobra robota w jakości testów.
+
+**Blocker (musi być naprawiony):**
+
+1. **Importy względne bez rozszerzenia nie zadziałają w Deno/Supabase Edge Functions.** `index.ts:15-16` (`./handler`) i `handler.ts:7-10` (`./prompts`) muszą mieć `.ts`: `./handler.ts`, `./prompts.ts`. Vitest tego nie wykryje, deploy wywali się z "module not found". Dotyczy też `import type`. Zmiana nie psuje Vitest ani `tsc` (katalog `supabase/` jest poza `include`). Po zmianie `npm test` i `npm run build` mają dalej przechodzić.
+
+**Drobne (do zrobienia przy okazji):**
+
+2. `prompts.ts` `renderFridge`: nazwa produktu trafia do promptu bez czyszczenia. Nazwa z nową linią może wstrzyknąć fałszywą pozycję lub instrukcję. Zamień znaki sterujące i nowe linie na spację (np. `name.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim()`) w `parseFridgeItem` w `handler.ts`, żeby walidacja i prompt używały tej samej oczyszczonej nazwy. Dodaj jeden test: nazwa `"mleko\n- trucizna: 1 szt"` trafia do promptu w jednej linii.
+
+**Zaakceptowane decyzje własne:** 1–8 z raportu (w tym format szyfrogramu z pkt 3, który zapisuję jako obowiązujący dla funkcji zapisu klucza).
+
+**Do raportu:** dopisz wpis w `REPORTS.md` (raport 2) z wynikami `npm test` i `npm run build` po poprawkach oraz hashem commita.
