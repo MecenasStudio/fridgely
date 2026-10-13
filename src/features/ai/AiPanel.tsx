@@ -10,6 +10,8 @@ type Props = {
   hasItems: boolean
   ask(task: Task): Promise<Recipe>
   onSave(recipe: { title: string; ingredients: Ingredient[]; steps: string[] }): Promise<void>
+  /** Optional: ship the AI's missing ingredients to the shopping list. */
+  onAddMissing?(names: string[]): Promise<void>
 }
 
 // Only these codes get their own wording; everything else is the generic message,
@@ -21,7 +23,7 @@ function errorKeyFor(error: unknown): string {
   return 'ai.genericError'
 }
 
-export function AiPanel({ hasItems, ask, onSave }: Props) {
+export function AiPanel({ hasItems, ask, onSave, onAddMissing }: Props) {
   const { t } = useTranslation()
   const [result, setResult] = useState<{ task: Task; recipe: Recipe } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -29,12 +31,17 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
+  const [addingMissing, setAddingMissing] = useState(false)
+  const [missingAdded, setMissingAdded] = useState(false)
+  const [missingFailed, setMissingFailed] = useState(false)
 
   async function run(task: Task) {
     setLoading(true)
     setError(null)
     setSaved(false)
     setSaveFailed(false)
+    setMissingAdded(false)
+    setMissingFailed(false)
     setResult(null)
     try {
       const recipe = await ask(task)
@@ -67,6 +74,21 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
   }
 
   const errorText = t(errorKeyFor(error))
+
+  async function addMissing() {
+    if (!result || !onAddMissing || addingMissing) return
+    setAddingMissing(true)
+    setMissingAdded(false)
+    setMissingFailed(false)
+    try {
+      await onAddMissing(result.recipe.missing)
+      setMissingAdded(true)
+    } catch {
+      setMissingFailed(true)
+    } finally {
+      setAddingMissing(false)
+    }
+  }
 
   return (
     <section>
@@ -119,6 +141,11 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
                   <li key={`${item}-${index}`}>{item}</li>
                 ))}
               </ul>
+              {onAddMissing && (
+                <button type="button" disabled={addingMissing} onClick={() => void addMissing()}>
+                  {t('ai.addMissing')}
+                </button>
+              )}
             </>
           )}
 
@@ -133,6 +160,8 @@ export function AiPanel({ hasItems, ask, onSave }: Props) {
 
       {saved && <p role="status">{t('ai.saved')}</p>}
       {saveFailed && <p role="alert">{t('ai.saveFailed')}</p>}
+      {missingAdded && <p role="status">{t('ai.missingAdded')}</p>}
+      {missingFailed && <p role="alert">{t('ai.addMissingFailed')}</p>}
     </section>
   )
 }

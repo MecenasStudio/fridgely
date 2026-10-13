@@ -24,10 +24,18 @@ function renderPanel(overrides: {
   hasItems?: boolean
   ask?: (task: 'recipes_from_fridge' | 'dinner_from_expiring') => Promise<Recipe>
   onSave?: (recipe: { title: string; ingredients: { name: string; quantity: number; unit: string }[]; steps: string[] }) => Promise<void>
+  onAddMissing?: (names: string[]) => Promise<void>
 } = {}) {
   const ask = overrides.ask ?? (async () => recipe)
   const onSave = overrides.onSave ?? noop
-  render(<AiPanel hasItems={overrides.hasItems ?? true} ask={ask} onSave={onSave} />)
+  render(
+    <AiPanel
+      hasItems={overrides.hasItems ?? true}
+      ask={ask}
+      onSave={onSave}
+      onAddMissing={overrides.onAddMissing}
+    />,
+  )
   return { ask, onSave }
 }
 
@@ -138,6 +146,45 @@ describe('AiPanel', () => {
     expect(screen.getByText('Omlet z pomidorami')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Save to my recipes' })).toBeTruthy()
     expect(onSave).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the "add missing" button when the recipe needs nothing', async () => {
+    const onAddMissing = vi.fn(async () => {})
+    const full: Recipe = { ...recipe, missing: [] }
+    renderPanel({ ask: async () => full, onAddMissing })
+    fireEvent.click(screen.getByRole('button', { name: 'Recipe from my fridge' }))
+    await screen.findByText('Omlet z pomidorami')
+
+    expect(screen.queryByRole('button', { name: 'Add missing items to the shopping list' })).toBeNull()
+    expect(onAddMissing).not.toHaveBeenCalled()
+  })
+
+  it('sends the missing names to the shopping list', async () => {
+    const onAddMissing = vi.fn(async () => {})
+    renderPanel({ onAddMissing })
+    fireEvent.click(screen.getByRole('button', { name: 'Recipe from my fridge' }))
+    await screen.findByText('Omlet z pomidorami')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add missing items to the shopping list' }))
+    expect(onAddMissing).toHaveBeenCalledWith(['masło'])
+    expect(await screen.findByText('Missing items added to the shopping list.')).toBeTruthy()
+  })
+
+  it('alerts when adding the missing items fails', async () => {
+    const raw = 'insert denied'
+    const onAddMissing = vi.fn(async () => {
+      throw new Error(raw)
+    })
+    renderPanel({ onAddMissing })
+    fireEvent.click(screen.getByRole('button', { name: 'Recipe from my fridge' }))
+    await screen.findByText('Omlet z pomidorami')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add missing items to the shopping list' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('Could not add the missing items to the shopping list. Please try again.')
+    expect(screen.queryByText(raw)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add missing items to the shopping list' })).toBeTruthy()
   })
 
   it('disables both buttons and explains why when the fridge is empty', () => {
