@@ -116,7 +116,8 @@
                  "consumeNothing":  "Nic nie ubywa z lodówki.",
                  "confirm":  "Potwierdź",
                  "cancel":  "Anuluj",
-                 "consumeFailed":  "Nie udało się zapisać zmian w lodówce. Nic nie zostało zmienione po cichu — sprawdź lodówkę i spróbuj ponownie."
+                 "consumeFailed":  "Część zmian mogła zostać zapisana. Sprawdź lodówkę przed ponowieniem.",
+                 "consumeStale":  "Lodówka zmieniła się. Otwórz podgląd ponownie."
              },
     "shopping":  {
                      "generate":  "Utwórz listę z planu",

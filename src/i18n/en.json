@@ -116,7 +116,8 @@
                  "consumeNothing":  "Nothing comes out of the fridge.",
                  "confirm":  "Confirm",
                  "cancel":  "Cancel",
-                 "consumeFailed":  "Could not save the fridge changes. Nothing was changed silently — check the fridge and try again."
+                 "consumeFailed":  "Part of the changes may have been saved. Check the fridge before trying again.",
+                 "consumeStale":  "The fridge changed. Open the preview again."
              },
     "shopping":  {
                      "generate":  "Build list from plan",
