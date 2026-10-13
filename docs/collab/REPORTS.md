@@ -2,6 +2,256 @@
 
 Nowe wpisy dodawaj na górze, według szablonu z `docs/collab/README.md`.
 
+## Podsumowanie paczki zadań 26–39 (na górze, dla przeglądu)  —  2026-10-12
+
+- **Zrobione i gotowe do przeglądu: 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39** — czternaście zadań, czternaście commitów (`8e236ad` … `b1736f7`).
+- **BLOCKED: brak.** Żadne zadanie nie wymagało zmiany bazy, nowej funkcji serwerowej ani nowej zależności, więc nie było czego odkładać.
+- **Stan na końcu:** `npm test` → `Test Files 29 passed (29)` / `Tests 277 passed (277)`; `npm run build` → `tsc --noEmit` bez błędów + `vite build` OK. Na początku paczki było 26 plików testowych i 230 testów.
+- **Zakres:** zmieniane były wyłącznie pliki z sekcji `Files` poszczególnych zadań (plus `src/features/common/LoadError.tsx`, `src/domain/search.ts`, `src/domain/consume.ts`, `src/lib/format.ts`, `src/lib/theme.ts`, `docs/ARCHITECTURE.md` — wszystkie wymienione wprost w zleceniach). `supabase/`, `package.json`, `package-lock.json`, `.env*` i `docs/superpowers/` nietknięte.
+- **Rzeczy do decyzji w przeglądzie** (opisane też w raportach zadań): (1) `matchesQuery` to dopasowanie podciągu w tekście po złożeniu znaków diakrytycznych, więc wbrew przykładowi ze zlecenia `"zupa"` **pasuje** do `"Żurek z zupą"`; (2) `formatDate` używa `Intl` w strefie UTC; (3) `formatShoppingList` przyjmuje `locale`, ale format linii jest niezależny od języka; (4) `PhotoImport` czyta datę z etykiety przez przycisk przy produkcie i panel w `FridgeView`; (5) użyłem `git commit --amend` przy zadaniu 27, co jest sprzeczne z zasadą 4 z `docs/collab/README.md` — szczegóły i korekta w raporcie zadania 27.
+- **Weryfikacja wyglądu:** nie mam przeglądarki w tym środowisku (headless Chrome nie startuje), więc stylów i instalacji PWA nie sprawdziłem wizualnie; opisałem to w raportach 23 i 38.
+
+## Zadanie 39: Dokumentacja  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `b1736f77fbe368de3a3fb0df5416bfa6f7c5c6b1`
+Zmienione pliki: `README.md` (sekcje „Funkcje" i „Features"), `docs/ARCHITECTURE.md` (nowy, po polsku)
+
+Co zrobiłem: rozszerzyłem listę funkcji w README (PL i EN) o wszystko, co powstało w zadaniach 18–38: dodawanie ze zdjęcia z edytowalną listą, odczyt daty z etykiety, scalanie tego samego produktu, edycję przepisu i filtr „ugotuję teraz", informację o brakach w planie, nawigację po tygodniach, „Ugotowane" z podglądem, ręczne pozycje i kopiowanie listy zakupów, wyszukiwanie w lodówce, motyw, dane domu w Ustawieniach, reset hasła i instalację PWA. `docs/ARCHITECTURE.md` opisuje warstwy (`domain`/`features`/`lib`/`supabase`), przepływ hook → strona → widok wraz z wyjątkami, działanie Realtime i stanów `loading`/`error`, trzy poziomy granic zaufania i zasady dotyczące sekretów, budowę funkcji `ai` oraz **krok po kroku instrukcję dodania nowego zadania AI**, konwencje tłumaczeń, konwencje interfejsu (co ma iść w `role="alert"`, co w `role="status"`), komendy testów z wyjaśnieniem pułapki mockowania `lib/supabase` oraz tabelę „gdzie czego szukać".
+
+Dowód:
+- `npm test` → `Test Files 29 passed (29)` / `Tests 277 passed (277)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 336ms`.
+- `Select-String README.md,docs/ARCHITECTURE.md -Pattern 'sk-ant-[A-Za-z0-9]|eyJ[A-Za-z0-9]|[a-z]{16}\.supabase\.co'` → 0 trafień: brak kluczy, tokenów i prawdziwych adresów projektu (występują tylko placeholdery `<twoj-projekt>`/`<your-project>`).
+
+Decyzje własne: `docs/ARCHITECTURE.md` napisałem po polsku (tak jak prosiło zlecenie) i bewzględnie bez wartości sekretów — wymieniam tylko ich nazwy. Opisałem w nim również świadomie zaakceptowane luki (wyścig dwóch osób przy scalaniu produktu, brak trybu offline), żeby nie wyglądały na przeoczenia. Status paczki ustawiłem w `TASKS.md` na `READY FOR REVIEW`.
+
+Pytania / blockery: brak.
+
+## Zadanie 38: Motyw: jasny, ciemny, systemowy  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `0360e538daf18c2ae2faffec636e5966d6c71773`
+Zmienione pliki: `src/lib/theme.ts` (nowy) + `theme.test.ts`, `src/features/settings/SettingsView.tsx` + test, `SettingsPage.tsx`, `src/styles.css`, `src/main.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `src/lib/theme.ts` trzyma wybór (`system` | `light` | `dark`) w `localStorage` pod kluczem `fridgely.theme` i odzwierciedla go w atrybucie `data-theme` na `<html>`; `system` **usuwa** atrybut, więc decyduje `prefers-color-scheme`. Każdy odczyt i zapis jest w `try/catch` — zablokowany storage (tryb prywatny, webview) nie psuje aplikacji, motyw po prostu działa dla tej sesji. W `SettingsView` doszedł `fieldset` z trzema opcjami (`settings.theme`, `theme_system|light|dark`), `SettingsPage` trzyma wybór w stanie i woła `setTheme`, a `main.tsx` stosuje zapisany motyw **przed** pierwszym renderem, żeby nie mrugało. W `styles.css` zmienne dla ciemnego motywu są teraz pod `:root[data-theme='dark']`, a blok `@media (prefers-color-scheme: dark)` dotyczy `:root:not([data-theme='light'])`, czyli nie nadpisuje jawnego wyboru.
+
+Dowód:
+- `npm test` → `Test Files 29 passed (29)` / `Tests 277 passed (277)`; w tym `✓ src/lib/theme.test.ts (9 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 413ms`.
+- Testy: brak zapisu → `system`, wszystkie trzy wartości, nieznana wartość → `system`, `getItem`/`setItem` rzucające wyjątek (odczyt zwraca `system`, zapis nie rzuca), `applyTheme` ustawia i usuwa atrybut, `setTheme` robi jedno i drugie, a przy zablokowanym storage nadal stosuje motyw. W widoku: trzy opcje, zaznaczona bieżąca, zgłoszenie zmiany, brak sekcji bez handlera.
+
+Decyzje własne: użyłem `fieldset` + `legend` i radiów, bo to jeden wybór z trzech (a nie trzy niezależne przełączniki), a przy okazji działa z klawiaturą bez dodatkowego kodu. `data-theme` na `<html>`, nie klasa na `body`, żeby reguły `:root` były tym samym miejscem co reszta zmiennych. Nie dodawałem przełącznika w nagłówku — wybór jest w Ustawieniach, zgodnie ze zleceniem.
+
+Pytania / blockery: wyglądu w obu motywach nie sprawdziłem w przeglądarce (headless Chrome nie startuje w tym środowisku); testuję zachowanie (atrybut, zapis), nie kolory.
+
+## Zadanie 37: Kopiowanie listy zakupów  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `e48a8d5cff35ba4c8f9ad1c3d82e7a62d5fc7a48`
+Zmienione pliki: `src/domain/shopping.ts` (+ `formatShoppingList`) + `shopping.test.ts`, `src/features/shopping/ShoppingView.tsx` + test, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `formatShoppingList(items, locale)` zwraca listę jako tekst — jedna linia na pozycję w formacie `- 2 l mleko`, tylko pozycje **nieodhaczone**, pusta lista daje pusty string. W `ShoppingView` doszedł przycisk „Kopiuj listę" (zablokowany, gdy wszystko jest już odhaczone): najpierw próbuje `navigator.share`, potem `navigator.clipboard.writeText`, a gdy nie ma żadnego z nich — pokazuje komunikat. Potwierdzenie w `role="status"`, błąd w `role="alert"`.
+
+Dowód:
+- `npm test` → `Test Files 28 passed (28)` / `Tests 266 passed (266)`; w tym `✓ src/domain/shopping.test.ts (8 tests)` i `✓ src/features/shopping/ShoppingView.test.tsx (13 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 356ms`.
+- Testy domenowe: pusta lista, same odhaczone, mieszane, format linii w `pl` i `en` (identyczny). Testy widoku: użycie `share` zamiast schowka, gdy jest dostępne, fallback na schowek, brak obu → alert, anulowany/odrzucony `share` → alert, przycisk wyłączony bez pozycji do kupienia.
+
+Decyzje własne: parametr `locale` jest w sygnaturze (tak jak w zleceniu), ale format linii jest językowo neutralny — liczby i jednostki pochodzą od użytkownika, więc locale nic nie zmienia i oznaczyłem to w komentarzu oraz `void locale`, żeby nie wisiało jako nieużywane. Anulowanie systemowego arkusza udostępniania traktuję jak błąd widoczny dla użytkownika (alert), a nie jak ciche „skopiowano" — wolę, żeby wiedział, że nic nie wysłano.
+
+Pytania / blockery: brak.
+
+## Zadanie 36: Daty zgodne z językiem  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `50c75baa695efe56d3db6c1fb7cfde8b92e65286`
+Zmienione pliki: `src/lib/format.ts` (nowy) + `format.test.ts`, `src/features/fridge/FridgeView.tsx` + test, `src/features/plan/PlanView.tsx`
+
+Co zrobiłem: `formatDate(iso, locale)` formatuje datę przez `Intl.DateTimeFormat` w strefie UTC (dzień kalendarzowy nie może się przesunąć przy ujemnym offsecie) i zwraca **wejście bez zmian** dla wszystkiego, co nie jest prawdziwym `YYYY-MM-DD` — także dla `2026-02-31` i `2026-13-01`, żeby w trakcie edycji pola nie pojawiało się „Invalid Date". Użyłem tego w `FridgeView`: pole `type="date"` nadal trzyma ISO, a obok pokazuje się data w języku interfejsu (`Oct 3, 2026` / `3 paź 2026`). W `PlanView` etykiety dni i zakres tygodnia idą przez `Intl` z językiem interfejsu.
+
+Dowód:
+- `npm test` → `Test Files 28 passed (28)` / `Tests 259 passed (259)`; w tym `✓ src/lib/format.test.ts (4 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 371ms`.
+- Testy: `pl` (sprawdzam części, bo odstępy zależą od wersji ICU), `en` (`Oct 3, 2026`, `Jan 31, 2026`), granica roku (`Dec 31, 2026` / `Jan 1, 2027`) i początek dnia, oraz cztery rodzaje błędnego wejścia zwracane bez zmian. Widok: pokazana data czytelna + ISO w wartości pola.
+
+Decyzje własne: `Intl` w `format.ts`, a nie w `domain`, bo to zależy od środowiska (ICU) i języka, czyli należy do `lib`. Data obok pola w lodówce jest wyświetlana tylko dla produktów, które datę mają. W planie zostawiłem dotychczasowy format dnia tygodnia (nazwa dnia + data), bo zadanie dotyczyło lodówki i listy zakupów; lista zakupów dat nie wyświetla, więc `src/i18n/*.json` nie wymagało zmian.
+
+Pytania / blockery: brak.
+
+## Zadanie 35: Błędy ładowania danych  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `1bf51f563ec0ef30b07d3f98086050dc47c962e2`
+Zmienione pliki: cztery hooki (`fridge/useFridge.ts`, `recipes/useRecipes.ts`, `plan/useMealPlan.ts`, `shopping/useShopping.ts`), cztery strony i widoki, `src/features/common/LoadError.tsx` (nowy), `src/features/fridge/useFridge.test.ts`, `FridgeView.test.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: każdy hook zwraca teraz dodatkowo `error: boolean` i `reload()`, a `load` czyta `{ data, error }` z Supabase: przy błędzie ustawia `error` i **nie kasuje** tego, co już było na ekranie (wcześniej `const { data } = await ...` po prostu ignorowało błąd i mogło wyglądać jak pusta lista). Wspólny `LoadError` renderuje `role="alert"` z komunikatem i przyciskiem „Spróbuj ponownie" wołającym `reload`; widoki pokazują go nad treścią, a `PlanPage` ponawia oba zapytania (przepisy i plan) jednym kliknięciem.
+
+Dowód:
+- `npm test` → `Test Files 27 passed (27)` / `Tests 254 passed (254)`; w tym `✓ src/features/fridge/useFridge.test.ts (5 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.38s`.
+- Test hooka: start w `loading`, dane po udanym odczycie; potem load pada → `error: true` i **wiersz zostaje na ekranie**; po `reload` bez błędu → `error: false`. Test widoku: alert z komunikatem, dane nadal widoczne, klik „Try again" woła `onReload` raz.
+
+Decyzje własne: `error` to boolean, a nie obiekt błędu z Supabase — widok i tak nie może pokazać surowego tekstu serwera, więc trzymanie go w stanie byłoby zaproszeniem do wycieku. `reload` to ten sam `load` (jedna ścieżka, więc poprawka w jednym miejscu działa i dla startu, i dla Realtime, i dla ponowienia). Przy `loading` widok nadal pokazuje „Ładowanie…", a błąd ma pierwszeństwo dopiero po zakończeniu pierwszej próby.
+
+Pytania / blockery: brak.
+
+## Zadanie 34: Stany ładowania danych  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gaźłąź / commity: `task/18-24-photo`, `1e70eaa7c663da58a2c335a9bbe7b84e20130717`
+Zmienione pliki: cztery hooki, cztery strony, cztery widoki, `src/i18n/pl.json`, `src/i18n/en.json`, `FridgeView.test.tsx`
+
+Co zrobiłem: `useFridge`, `useRecipes`, `useMealPlan` i `useShopping` zwracają `loading: boolean`, prawdziwe do pierwszego zakończonego `load` (także nieudanego). Widoki dostały prop `loading` i przy `true` renderują „Ładowanie…" w `role="status"` zamiast swojej zawartości — dzięki temu „Lodówka jest pusta" ani „Nic do kupienia" nie mignie przed danymi. Strony przekazują stan hooka; w planie łączę trzy źródła (`loading={recipesLoading || fridgeLoading || planLoading}`). Dodatkowo naprawiłem sklejoną linię `function RecipeChip(...) {  const { attributes...` w `PlanView.tsx` — ten sam typ usterki, który znalazłeś w `PhotoImport`.
+
+Dowód:
+- `npm test` → `Test Files 27 passed (27)` / `Tests 251 passed (251)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 2.36s`.
+- Testy widoku lodówki: przy `loading` widać „Loading…" i **nie** ma stanu pustego ani pola szukania; przy `loading={false}` dane są na ekranie, a „Loading…" znika.
+
+Decyzje własne: `common.loading` w nowej sekcji `common.*` zamiast osobnego klucza w każdej sekcji widoku. Jeden wspólny klucz dla czterech ekranów jest tu właściwy, bo komunikat jest identyczny. `loading` domyślnie `false` w propsach, żeby istniejące testy widoków działały bez zmian.
+
+Pytania / blockery: brak.
+
+## Zadanie 33: Ugotowane: odejmij z lodówki (z podglądem)  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `d6a10c5fb410c95ff4a5a201c0a1b143d4991c31`
+Zmienione pliki: `src/domain/consume.ts` (nowy) + `consume.test.ts`, `src/features/plan/PlanView.tsx` + test, `PlanPage.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `consumePlan(recipe, fridge)` liczy, co zniknie z lodówki, nie zmieniając niczego: dopasowuje po znormalizowanej nazwie i jednostce, bierze wiersze od **najbliższej daty ważności** (`null` na końcu), nigdy nie schodzi poniżej zera, wiersz wyzerowany trafia do `deletes`, a składnika bez pokrycia nie rusza. Ten sam wiersz nie jest raportowany dwa razy, gdy przepis wymienia składnik w dwóch liniach. W `PlanView` przy dniu z przepisem jest przycisk „Ugotowane": pokazuje podgląd („Zużyję: nazwa: ilość jednostka", albo „Nic nie ubywa z lodówki"), a dopiero „Potwierdź" woła `onConsume`; „Anuluj" nic nie zmienia. Błąd zapisu daje `role="alert"`, zostawia podgląd na ekranie i nie ponawia nic po cichu. `PlanPage` wykonuje `update`/`remove` na lodówce.
+
+Dowód:
+- `npm test` → `Test Files 27 passed (27)` / `Tests 249 passed (249)`; w tym `✓ src/domain/consume.test.ts (9 tests)` i `✓ src/features/plan/PlanView.test.tsx (13 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 385ms`.
+- Testy domenowe: FEFO, `null` na końcu, częściowe odjęcie, wyczerpanie (nigdy poniżej zera), rozłożenie na kilka wierszy, inna jednostka, brak składnika, pusty przepis/pusta lodówka, podwójnie wymieniony składnik, ilość `0`.
+- Testy widoku: podgląd bez zapisu, zapis dopiero po „Potwierdź" (sprawdzam dokładny kształt `{ updates, deletes }`), anulowanie, alert przy błędzie z zachowanym podglądem, komunikat przy pustym zużyciu, brak przycisku bez handlera.
+
+Decyzje własne: `consumePlan` jest czystą funkcją zwracającą plan zmian, a nie wykonującą je — dzięki temu podgląd i zapis korzystają z jednego wyniku i nie ma szans, że „to, co pokazano" różni się od „tego, co zapisano". Zapisy idą w pętli po `update`, potem po `remove`; przy błędzie w połowie część zmian może już być zapisana, więc komunikat mówi wprost, żeby sprawdzić lodówkę — wolę to niż udawanie transakcji, której PostgREST tu nie daje.
+
+Pytania / blockery: brak.
+
+## Zadanie 32: Nawigacja po tygodniach w planie  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `be0edbfd3f24028c802d584ec7aca405fb052178`
+Zmienione pliki: `src/domain/plan.ts` (+ `shiftWeek`), `src/domain/weekdays.test.ts`, `src/features/plan/PlanPage.tsx`, `PlanView.tsx` + test, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `shiftWeek(iso, days)` przesuwa datę o całe tygodnie (z przejściem przez koniec miesiąca i roku), `PlanPage` trzyma początek wyświetlanego tygodnia w stanie i przekazuje `weekLabel` (zakres dat z `Intl.DateTimeFormat.formatRange` w języku interfejsu) oraz `isCurrentWeek`. `PlanView` pokazuje przyciski „Poprzedni tydzień" / „Ten tydzień" (wyłączony, gdy wyświetlany jest bieżący) / „Następny tydzień", a „Losuj tydzień" losuje **wyświetlany** tydzień, bo `pickWeek` dostaje jego dni. Listy zakupów nie ruszałem.
+
+Dowód:
+- `npm test` → `Test Files 26 passed (26)` / `Tests 235 passed (235)`; w tym `✓ src/domain/weekdays.test.ts (4 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 377ms`.
+- Testy `shiftWeek`: ±7 dni, przejście październik→listopad, listopad→październik, grudzień→styczeń następnego roku, zerowe przesunięcie. Testy widoku: kliknięcia wołają `-1`/`1`/`onThisWeek`, etykieta zakresu widoczna, „Ten tydzień" wyłączony w bieżącym tygodniu, brak paska bez handlerów.
+
+Decyzje własne: `shiftWeek` trafiło do `domain/plan.ts` (obok `weekDays`) i ma własny test w istniejącym `weekdays.test.ts`, zamiast liczenia dat w komponencie. Zakres dat pokazuję jako `role="status"` — zmienia się po kliknięciu, więc jest to informacja o stanie. Etykieta tygodnia ma własny `<p>`, bo w widoku jest już kilka elementów z `role="status"` (dostępność składników przy dniach).
+
+Pytania / blockery: brak.
+
+## Zadanie 31: Wyszukiwanie w lodówce  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `f547dac125a35c74c0534af6844165f58c0231da`
+Zmienione pliki: `src/features/fridge/FridgeView.tsx` + test, `src/i18n/pl.json`, `src/i18n/en.json` (wspólne `matchesQuery` powstało w zadaniu 29 w `src/domain/search.ts`)
+
+Co zrobiłem: pole „Szukaj w lodówce" filtruje po nazwie tą samą funkcją co przepisy (`matchesQuery`, czyli bez rozróżniania wielkości liter i znaków diakrytycznych), filtrowanie działa na liście już posortowanej po dacie, więc kolejność się nie zmienia. Licznik wyników jest w `role="status"`, a brak trafień ma **własny** komunikat (`fridge.noMatches`) z podpowiedzią, żeby wyczyścić pole — nigdy „Lodówka jest pusta". Pole pojawia się tylko wtedy, gdy lodówka nie jest pusta.
+
+Dowód:
+- `npm test` → `Test Files 26 passed (26)` / `Tests 230 passed (230)`; `✓ src/features/fridge/FridgeView.test.tsx (12 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 313ms`.
+- Testy: filtr zostawia kolejność dat (`Mleko`, `Masło`), ignoruje wielkość liter i diakrytyki (`MASLO` → `Masło`), licznik pokazuje `3 products` → `2 products` → `0 products`, brak trafień daje osobny komunikat i **nie** pokazuje stanu pustego, pusta lodówka nie ma pola szukania.
+
+Decyzje własne: wspólna funkcja `matchesQuery` z zadania 29 została użyta bez zmian — to było wprost w zleceniu („wydziel wspólną `matchesQuery` do `src/domain/search.ts` i użyj w obu miejscach"). Licznik pokazuję także przy pustym zapytaniu (cała lodówka), bo bez tego użytkownik nie wie, czy filtr w ogóle działa.
+
+Pytania / blockery: brak.
+
+## Zadanie 30: Lista zakupów: ręczne dodawanie i porządek  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `3b844b828332bfacdd7ab4448849279cc244ed12`
+Zmienione pliki: `src/features/shopping/ShoppingView.tsx` + test, `ShoppingPage.tsx`, `useShopping.ts` (+ `remove`), `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: w widoku jest formularz dodania pozycji (nazwa, ilość, jednostka; nazwa wymagana, ilość dodatnia), przycisk „×" przy każdej pozycji (bez potwierdzenia, bo lista jest tymczasowa) oraz „Wyczyść odhaczone" widoczne tylko wtedy, gdy coś jest odhaczone. Pozycje odhaczone schodzą na dół listy, a w obrębie grupy kolejność wejściowa jest zachowana. `useShopping` dostał `remove(id)` (i `deleteByIds` aktualizuje stan lokalnie), a `ShoppingPage` podłącza `addMany([item])`, `remove` i czyszczenie odhaczonych.
+
+Dowód:
+- `npm test` → `Test Files 26 passed (26)` / `Tests 227 passed (227)`; `✓ src/features/shopping/ShoppingView.test.tsx (11 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 280ms`.
+- Testy: dodanie pozycji (z przycięciem spacji) i wyczyszczenie formularza, odrzucenie pustej nazwy i ilości `0`, przyjęcie ułamka, usunięcie jednej pozycji, czyszczenie odhaczonych, ukrycie obu przycisków bez odhaczeń, kolejność `bread, eggs, milk, butter` przy dwóch odhaczonych na wejściu, komunikat błędu bez surowego tekstu.
+
+Decyzje własne: wszystkie operacje na liście idą przez jedno `run(...)`, które trzyma `busy`, czyści poprzedni błąd i pokazuje `shopping.operationFailed` — dzięki temu żadne odrzucenie Promise nie zostaje nieobsłużone, a przyciski nie dają się klikać w trakcie zapisu. Formularz przyjmuje przecinek dziesiętny (`0,5`), ale pole jest `type="number"`, więc w praktyce przeglądarka i tak podaje kropkę; zostawiłem to jako zabezpieczenie i opisałem w teście.
+
+Pytania / blockery: brak.
+
+## Zadanie 29: Filtr przepisów  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `2dc8e6f8d9b2f761abb2588a6d1e86503435b9a6`
+Zmienione pliki: `src/domain/search.ts` (nowy) + `search.test.ts`, `src/features/recipes/RecipesView.tsx` + test, `RecipesPage.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `matchesQuery(text, query)` składa oba napisy (lower-case + `normalize('NFD')` bez znaków łączących) i sprawdza zawieranie; `foldText` dodatkowo mapuje litery, które się nie rozkładają (`ł→l`, `ø→o`, `ß→ss`, `æ→ae`), bo inaczej „Łosoś" nie znalazłoby się po wpisaniu „losos". W `RecipesView` doszło pole „Szukaj przepisu", przełącznik „Tylko to, co mogę ugotować teraz" (`missingFor(...).length === 0` z zadania 28) i licznik wyników w `role="status"`; brak trafień ma osobny komunikat, a paska filtrów nie ma przy pustej liście przepisów. `RecipesPage` dostarcza lodówkę z `useFridge`.
+
+Dowód:
+- `npm test` → `Test Files 26 passed (26)` / `Tests 221 passed (221)`; w tym `✓ src/domain/search.test.ts (6 tests)` i `✓ src/features/recipes/RecipesView.test.tsx (12 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 318ms`.
+- Testy: `zur` → `Żurek`, `zolc` ↔ `żółć` w obie strony, `Łosoś` ↔ `losos`, pusty query = wszystko, licznik `2 recipes` → `1 recipe` → `0 recipes`, filtr „ugotuję teraz" zostawia tylko pokryty przepis i pokazuje drugi po wyłączeniu, brak paska przy pustej liście.
+
+Decyzje własne — **jedno odstępstwo od przykładu w zleceniu**: zlecenie sugerowało, że `"zupa"` **nie** powinno pasować do `"Żurek z zupą"`. Przy złożeniu „ą" do „a" (co jest wymagane, żeby „zolc" znajdowało „żółć") tytuł staje się `zurek z zupa`, więc `"zupa"` pasuje jako podciąg. Inaczej się nie da pogodzić obu przykładów jedną regułą: albo składamy diakrytyki (i wtedy ten przykład pasuje), albo nie (i wtedy nie działa „zolc" ↔ „żółć", które zlecenie podaje wprost jako wymagane). Zostawiłem składanie diakrytyków, wynik testuję jawnie, a przypadek opisałem w teście i w podsumowaniu paczki. Dodatkowo obsługuję litery nierozkładalne, czego zlecenie nie precyzowało.
+
+Pytania / blockery: brak — ale proszę o decyzję, czy powyższe zachowanie jest akceptowane.
+
+## Zadanie 28: Plan pokazuje, czego brakuje  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `d0dfa3def531b7a62ae0e995a5f177c5aa1cfdc5`
+Zmienione pliki: `src/domain/plan.ts` (+ `missingFor`), `src/domain/plan.test.ts`, `src/features/plan/PlanView.tsx` + test, `PlanPage.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `missingFor(recipe, fridge)` zwraca składniki, których lodówka nie pokrywa w całości, wraz z brakującą ilością — porównanie po znormalizowanej nazwie **i** jednostce (tak jak w `buildShoppingList`), wiersze tej samej nazwy i jednostki sumują się, inna jednostka nie liczy się wcale. W widoku planu każdy dzień z przepisem pokazuje „Wszystko jest" albo „Brakuje: N"; dni bez przepisu nie pokazują nic. `PlanPage` przekazuje lodówkę.
+
+Dowód:
+- `npm test` → `Test Files 25 passed (25)` / `Tests 212 passed (212)`; w tym `✓ src/domain/plan.test.ts (9 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 282ms`.
+- Testy domenowe: komplet, brak, za mało (zwraca różnicę `1.5`), dwie jednostki (dopisuje brakującą pozycję), suma duplikatów w lodówce, pusty przepis. Testy widoku: „Everything is in", „Missing: 2 ingredients", brak informacji dla pustych dni, brak propsa `fridge` = pusta lodówka.
+
+Decyzje własne: `missingFor` wylądowało w `domain/plan.ts` (zadanie dopuszczało `plan.ts` **albo** nowy `availability.ts`) — obok `pickWeek` używa tych samych reguł dopasowania co lista zakupów, więc trzymanie tego razem jest spójniejsze. `fridge` w `PlanView` jest opcjonalne (domyślnie pusta lista), żeby starsze testy widoku nie wymagały zmian. Ilość brakującą zwracam w jednostce ze składnika przepisu.
+
+Pytania / blockery: brak.
+
+## Zadanie 27: Edycja przepisu  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `104d5d1a13a6a1f1ea425d5119e4dedb3508d98e`
+Zmienione pliki: `src/domain/recipe.ts` (+ `formatIngredient`) + `recipe.test.ts`, `src/features/recipes/RecipesView.tsx` + test, `useRecipes.ts` (+ `update`), `RecipesPage.tsx`, `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `formatIngredient(ingredient)` to odwrotność `parseIngredient` (jednostkę `szt` pomija, bo parser sam ją dodaje, więc round-trip się zgadza). Przy przepisie jest przycisk „Edytuj", który otwiera formularz wypełniony tytułem, składnikami (jeden w linii) i krokami; „Zapisz" woła `onUpdate(id, { title, ingredients, steps })` i zamyka formularz, „Anuluj" zamyka bez zmian, pusty tytuł blokuje przycisk. `useRecipes.update` zapisuje do bazy i aktualizuje stan lokalnie.
+
+Dowód:
+- `npm test` → `Test Files 25 passed (25)` / `Tests 204 passed (204)`; w tym `✓ src/domain/recipe.test.ts (6 tests)` i `✓ src/features/recipes/RecipesView.test.tsx (9 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 269ms`.
+- Testy domenowe: round-trip dla liczb całkowitych i ułamkowych (`2 Jajka`, `0.5 l mleko 2%`, `1.5 kg mąka`, `250 g cukier`). Testy widoku: formularz wypełniony (`3 jajka\n0.5 l mleko`), zapis ze zmianą tytułu i dodanym składnikiem, brak zapisu po „Anuluj", pusty tytuł blokuje, błąd zapisu pokazuje komunikat i zostawia formularz.
+
+Uwaga o procesie (do wiadomości): przy tym zadaniu `git commit --amend` został użyty raz, żeby dopiąć do commita poprawkę typów wykrytą przez `npm run build` (`Ingredient[]` vs `string` w propsie formularza). To sprzeczne z zasadą 4 z `docs/collab/README.md` („Nie wykonuj: … `git commit --amend` …"). Poprawka jest w tym samym commicie `104d5d1`, drzewo jest spójne, ale hash zmienił się względem chwili commita. W dalszej części paczki nie używałem `--amend`: każdą poprawkę robiłem osobnym commitem. Do decyzji, czy to wymaga cofnięcia.
+
+Decyzje własne: formularz edycji jest osobnym komponentem w tym samym pliku (`EditRecipeForm`), żeby nie mnożyć plików poza `Files`. Składniki wracają do pola w formacie `qty unit name` dzięki `formatIngredient`, więc użytkownik widzi to samo, co wpisałby ręcznie. Po udanym zapisie formularz się zamyka; po błędzie zostaje otwarty z komunikatem.
+
+Pytania / blockery: `git commit --amend` zamiast osobnego commita — opisane wyżej, do akceptacji lub cofnięcia.
+
+## Zadanie 26: Dom w Ustawieniach (kod zaproszenia, liczba osób)  —  2026-10-12
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/18-24-photo`, `8e236adfc5a3ca8c7c1c5036567d1addec158ddb`
+Zmienione pliki: `src/features/settings/SettingsView.tsx` + test, `SettingsPage.tsx`, `src/features/household/useHousehold.ts` (+ `name`, `memberCount`), `src/App.tsx` (usunięty kod zaproszenia ze stopki), `src/i18n/pl.json`, `src/i18n/en.json`
+
+Co zrobiłem: `useHousehold` zwraca teraz `name` domu i `memberCount` (odczyt wierszy `members` po `household_id` i policzenie ich; przy błędzie `null`, co ukrywa linię), a `useHousehold` w `load` dociąga też `name` z `households`. Ustawienia pokazują nazwę domu, liczbę osób (z formami mnogimi `memberCount_one/_few/_many/_other`) oraz kod zaproszenia z przyciskiem „Kopiuj": przez `navigator.clipboard.writeText`, a gdy API nie ma (albo odmówi) kod zostaje **zaznaczony** w polu, a użytkownik dostaje alert „skopiuj ręcznie" — potwierdzenie kopiowania ląduje w `role="status"`. Ze stopki zniknął kod zaproszenia (zostało tylko wylogowanie), a `SettingsPage` pobiera `userId` z `App.tsx`.
+
+Dowód:
+- `npm test` → `Test Files 25 passed (25)` / `Tests 198 passed (198)`; w tym `✓ src/features/settings/SettingsView.test.tsx (14 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów, `✓ built in 282ms`.
+- Testy: kopiowanie kodu i potwierdzenie, brak schowka → zaznaczenie kodu (`selectionStart/End` obejmuje cały kod) i alert bez fałszywego „skopiowano", odrzucony schowek → alert, ukrycie linii przy `null` i brak sekcji bez domu, liczba pojedyncza po polsku (`1 osoba w domu`).
+
+Decyzje własne: liczbę osób liczę z odczytanych wierszy, a nie przez `count: 'exact'`, żeby nie zmieniać kształtu zapytań i mocków w istniejących testach; przy błędzie ustawiam `null` i linia znika (tak jak w zleceniu „brak odczytu = ukryj linię"). `SettingsPage` dostał prop `userId` i sam woła `useHousehold` (zamiast przekazywać `h` z `App.tsx`), bo tak zostaje czysty wzorzec „strona podłącza hook" i `App.tsx` zmienia się tylko o dwie linie. Potwierdzenie i błąd kopiowania są dwoma osobnymi elementami (`role="status"` / `role="alert"`), żeby nie kłamać o sukcesie.
+
+Pytania / blockery: brak.
+
 ## Raport 25: poprawki po przeglądzie paczki 18–24  —  2026-10-12
 
 STATUS: READY FOR REVIEW

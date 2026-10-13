@@ -6,7 +6,7 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Paczka zadań 18–24: zdjęcia (AI vision), scalanie produktów, PWA, reset hasła
 
-STATUS: READY FOR REVIEW (oba punkty z przeglądu naprawione, patrz raport 25 w `REPORTS.md`)
+STATUS: READY FOR REVIEW (zadania 26–39 wykonane, patrz podsumowanie i raporty 26–39 w `REPORTS.md`)
 
 ### Przegląd Claude: paczka 18–24 (poprawki: 1 z 2 dozwolonych)
 
