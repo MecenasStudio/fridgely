@@ -1,4 +1,4 @@
-import { buildShoppingList } from '../../domain/shopping'
+import { buildShoppingList, purchasedToFridge } from '../../domain/shopping'
 import { weekDays } from '../../domain/plan'
 import { todayISO } from '../../domain/fridge'
 import { useFridge } from '../fridge/useFridge'
@@ -10,9 +10,9 @@ import { useShopping } from './useShopping'
 export function ShoppingPage({ householdId }: { householdId: string }) {
   const days = weekDays(todayISO())
   const { recipes } = useRecipes(householdId)
-  const { items: fridge } = useFridge(householdId)
+  const { items: fridge, add: addToFridge } = useFridge(householdId)
   const { plan } = useMealPlan(householdId, days)
-  const { items, toggle, replaceAll } = useShopping(householdId)
+  const { items, toggle, replaceAll, deleteByIds } = useShopping(householdId)
 
   const generate = async () => {
     const ids = new Set(days.map((d) => plan[d]).filter(Boolean))
@@ -20,5 +20,16 @@ export function ShoppingPage({ householdId }: { householdId: string }) {
     await replaceAll(buildShoppingList(planned, fridge))
   }
 
-  return <ShoppingView items={items} onToggle={toggle} onGenerate={generate} />
+  // Fridge first, shopping list second: if any insert fails, nothing is deleted and the
+  // user still sees the whole list (at worst with a duplicate in the fridge).
+  const moveChecked = async () => {
+    const purchased = purchasedToFridge(items)
+    if (purchased.length === 0) return
+    for (const row of purchased) {
+      await addToFridge(row)
+    }
+    await deleteByIds(items.filter((i) => i.checked).map((i) => i.id))
+  }
+
+  return <ShoppingView items={items} onToggle={toggle} onGenerate={generate} onMoveChecked={moveChecked} />
 }

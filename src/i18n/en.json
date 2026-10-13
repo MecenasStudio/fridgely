@@ -71,7 +71,10 @@
              },
     "shopping":  {
                      "generate":  "Build list from plan",
-                     "empty":  "Nothing to buy."
+                     "empty":  "Nothing to buy.",
+                     "moveChecked":  "Move bought items to the fridge",
+                     "moved":  "The bought items are in your fridge.",
+                     "moveFailed":  "Could not move the bought items. The list is unchanged."
                  },
     "ai":  {
                "fromFridge":  "Recipe from my fridge",

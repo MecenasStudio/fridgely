@@ -71,7 +71,10 @@
              },
     "shopping":  {
                      "generate":  "Utwórz listę z planu",
-                     "empty":  "Nic do kupienia."
+                     "empty":  "Nic do kupienia.",
+                     "moveChecked":  "Przenieś kupione do lodówki",
+                     "moved":  "Kupione produkty są w lodówce.",
+                     "moveFailed":  "Nie udało się przenieść kupionych produktów. Lista została bez zmian."
                  },
     "ai":  {
                "fromFridge":  "Przepis z lodówki",

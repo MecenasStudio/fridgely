@@ -52,5 +52,11 @@ export function useShopping(householdId: string) {
     if (ins.error) throw ins.error
   }
 
-  return { items, toggle, replaceAll, addMany }
+  const deleteByIds = async (ids: string[]) => {
+    if (ids.length === 0) return
+    const del = await supabase.from('shopping_items').delete().in('id', ids)
+    if (del.error) throw del.error
+  }
+
+  return { items, toggle, replaceAll, addMany, deleteByIds }
 }
