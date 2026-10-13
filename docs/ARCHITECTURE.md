@@ -1,23 +1,34 @@
 # Architektura Fridgely
 
 Dokument dla kolejnej osoby pracującej nad kodem: jak projekt jest ułożony, gdzie są granice
-zaufania i jak dodać nową funkcję bez psucia istniejących zasad. Opis dotyczy wersji z gałęzi
-`task/18-24-photo` (zadania 18–38).
+zaufania i jak dodać nową funkcję bez psucia istniejących zasad. Opis dotyczy wersji `0.1.0`
+(paczki zadań 1–51, gałąź `task/40-hardening`).
 
 ## Warstwy
 
 ```
-src/domain   czysta logika: typy, lodówka, lista zakupów, plan, scalanie, zużycie, wyszukiwanie
-src/lib      klienci i narzędzia: Supabase, AI, klucz API, zdjęcia, daty, motyw
-src/features ekrany i hooki: fridge, recipes, plan, shopping, ai, settings, auth, household
+src/domain   czysta logika: typy, lodówka, lista zakupów, plan, scalanie, zużycie, wyszukiwanie,
+             walidacja, stałe (limits), eksport danych
+src/lib      klienci i narzędzia: Supabase, Realtime, AI, klucz API, zdjęcia, daty, motyw, online
+src/features ekrany i hooki: fridge, recipes, plan, shopping, ai, settings, auth, household, common
 supabase     migracje SQL, test RLS, funkcje Edge (ai, save-key, _shared)
 ```
 
 Zasada, która trzyma całość w kupie: **`domain` nie zna sieci, Reacta ani przeglądarki.**
 Wszystko, co da się policzyć bez I/O — sortowanie po dacie, odejmowanie lodówki od listy
-zakupów, scalanie produktów, FEFO przy gotowaniu, dopasowanie tekstu — siedzi w `domain`
-i jest testowane bez mocków. `lib` to jedyne miejsce, które dotyka `fetch`, `supabase`,
-`localStorage`, canvasu czy `Intl`. `features` składa jedno i drugie.
+zakupów, scalanie produktów, FEFO przy gotowaniu, dopasowanie tekstu, walidacja produktu —
+siedzi w `domain` i jest testowane bez mocków. `lib` to jedyne miejsce, które dotyka `fetch`,
+`supabase`, `localStorage`, canvasu, `Intl` czy `navigator`. `features` składa jedno i drugie.
+
+Dwie zasady dopisane po przeglądach, bo ich złamanie już raz zabolało:
+
+- **Jedno miejsce na filtr i na stałe.** Filtr Realtime (`household_id=eq.<id>`) buduje tylko
+  `src/lib/realtime.ts`, a limity (`MAX_NAME_LENGTH`, `MAX_QUANTITY`, `SOON_DAYS`…) mieszkają
+  w `src/domain/limits.ts`. Kopiowanie takiego napisu do czterech hooków albo liczby do trzech
+  formularzy kończy się cichym rozjazdem.
+- **Walidacja jest wspólna.** `src/domain/validate.ts` to lustro reguł serwera z
+  `supabase/functions/ai/handler.ts`; formularz lodówki, ręczna nazwa z kodu kreskowego i lista
+  ze zdjęcia wołają tę samą funkcję i pokazują komunikat przy polu (`role="alert"`).
 
 ## Przepływ danych: hook → strona → widok
 
@@ -38,13 +49,18 @@ Wyjątki od schematu, świadome:
 - `AuthGate.tsx` trzyma razem hook sesji, hook trybu odzyskiwania hasła i dwa formularze, bo cała
   ta logika należy do jednego ekranu wejścia.
 - `features/common/LoadError.tsx` to wspólny, mały komponent błędu wczytywania używany przez
-  cztery widoki.
+  cztery widoki, a `features/common/ErrorBoundary.tsx` łapie błąd renderowania w zakładce i pokazuje
+  krótki komunikat z ponowieniem (bez treści błędu i stosu). W `App.tsx` granica ma `key={tab}`,
+  więc zmiana zakładki sama ją resetuje.
 
 ## Realtime i stan
 
-Hooki danych subskrybują zmiany przez `supabase.channel(...).on('postgres_changes', ...)`
-i po każdym zdarzeniu wołają ten sam `load`, który wykonuje się na starcie. Konsekwencje, o których
-warto wiedzieć:
+Hooki danych nie budują już własnych kanałów: każde wywołanie przechodzi przez
+`subscribeToHousehold(table, householdId, onChange)` z `src/lib/realtime.ts`, które składa kanał
+`<table>:<householdId>`, filtr `household_id=eq.<householdId>`, `schema: 'public'`, `event: '*'`
+i dławi zdarzenia (domyślnie 150 ms, trailing). Jedna akcja użytkownika potrafi wygenerować serię
+zmian wierszy (przeniesienie kupionych), a widok ma się odświeżyć raz. Zwracana funkcja usuwa kanał,
+anuluje oczekujący timer i zamyka subskrypcję tak, że spóźnione zdarzenie nic już nie zrobi.
 
 - `load` jest źródłem prawdy. Po zapisie nie trzeba łatać stanu lokalnie, żeby zobaczyć zmianę —
   przyjdzie z Realtime. Wyjątki, gdzie i tak aktualizujemy lokalnie, to `useFridge.add`
@@ -55,9 +71,15 @@ warto wiedzieć:
   w `role="status"` **zamiast** stanu pustego, a przy `error` — alert z przyciskiem „Spróbuj
   ponownie”, nie kasując tego, co już było na ekranie.
 - `useFridge` trzyma dodatkowo `useRef` z najnowszą listą (`current`), bo `add` musi widzieć skutki
-  poprzednich wywołań w tej samej pętli (import ze zdjęcia, przenoszenie kupionych). Świadomie
-  zaakceptowana luka: dwie osoby z jednego domu dodające produkt w tej samej milisekundzie mogą
-  się nadpisać; Realtime wyrównuje stan chwilę później.
+  poprzednich wywołań w tej samej pętli (import ze zdjęcia, przenoszenie kupionych). Wiersz dodany
+  w tej sesji ma id `local-N`, dopóki `load` nie zwróci prawdziwego; `update` i `remove` rozpoznają
+  taki identyfikator, przeładowują listę i szukają wiersza po nazwie, jednostce i dacie
+  (`FRIDGE_ROW_NOT_SYNCED`, gdy go nie ma).
+- „Ugotowane" liczy podgląd z migawki listy z chwili otwarcia i przed zapisem sprawdza, czy wiersze
+  się nie zmieniły; po błędzie zapisu zamyka podgląd, przeładowuje lodówkę i pokazuje komunikat,
+  żeby nikt nie odjął tych samych składników dwa razy. Świadomie zaakceptowana luka: dwie osoby
+  z jednego domu dodające produkt w tej samej milisekundzie mogą się nadpisać; Realtime wyrównuje
+  stan chwilę później.
 
 ## Granice zaufania i sekrety
 
@@ -179,5 +201,13 @@ pośrednio importuje klienta, musi go zamockować — także testy widoków, kt�
 | Plan tygodnia, braki, przesuwanie tygodni | `src/domain/plan.ts` |
 | Zużycie lodówki (FEFO) | `src/domain/consume.ts` |
 | Wyszukiwanie tekstu | `src/domain/search.ts` |
+| Walidacja produktu | `src/domain/validate.ts` |
+| Wszystkie limity | `src/domain/limits.ts` |
+| Eksport danych domu | `src/domain/export.ts` |
 | Motyw | `src/lib/theme.ts`, `src/styles.css` |
+| Realtime | `src/lib/realtime.ts` |
+| Stan połączenia | `src/lib/useOnline.ts` |
+| Formaty dat | `src/lib/format.ts` |
+| Granica błędów | `src/features/common/ErrorBoundary.tsx` |
+| Historia zmian | `CHANGELOG.md` |
 | Zasady współpracy | `docs/collab/README.md` |
