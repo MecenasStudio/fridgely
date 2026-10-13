@@ -17,7 +17,81 @@ Sprawdzone przeze mnie: `npm test` 188/188, `npm run build` OK, zakres plików z
 1. **Błąd w `src/features/fridge/PhotoImport.tsx:104`** (zgubiony znak nowej linii): `if (!file || !dateTarget || readBusy) return    setReadBusy(true)` jest czytane jako `return setReadBusy(true)`. Skutek: przy wczesnym wyjściu `readBusy` zostaje ustawione na `true` i nic go nie zeruje (odczyt dat przestaje działać do przeładowania), a w normalnej ścieżce `readBusy` nigdy nie jest `true` w trakcie odczytu (brak komunikatu "Odczytuję datę", możliwe podwójne wysłanie). Napraw: wczesne `return` w osobnej linii, bez wywołania `setReadBusy`, a `setReadBusy(true)` na początku normalnej ścieżki. Dodaj test: (a) podczas oczekującego `readDate` widać `role="status"` z komunikatem odczytu i drugi wybór pliku nie woła `readDate` ponownie; (b) wybór pliku `undefined` nie blokuje kolejnego odczytu. Przejrzyj plik pod kątem innych sklejonych linii.
 2. **Utrata ilości przy scalaniu w `src/features/fridge/useFridge.ts` (`add`)**: `findMergeTarget(items, item)` czyta `items` z domknięcia renderu, a `PhotoImport.addAll` i przenoszenie kupionych z listy zakupów wołają `add` w pętli. Kolejne wywołania widzą tę samą, nieodświeżoną listę, więc (a) dwa identyczne produkty w jednej paczce wstawiają dwa wiersze zamiast jednego, (b) dwa dopiski do istniejącego wiersza obliczają `target.quantity + item.quantity` od tej samej starej wartości i drugi nadpisuje pierwszy (np. 1 + 2 + 2 daje 3 zamiast 5). Napraw: trzymaj aktualną listę w `useRef` (aktualizowaną przy każdym `add` i przy każdym `load`) i licz scalenie na niej, żeby kolejne wywołania w jednej pętli widziały skutki poprzednich. Wyścig między dwiema osobami z domu zostaw (zaakceptowane na tym etapie), opisz go w komentarzu przy `add`. Dodaj test hooka (z zamockowanym `supabase`): trzy kolejne `add` tego samego produktu (1, 2, 2) dają jedno `update` z końcową ilością 5 albo jedno `insert` plus dwa `update` kończące na 5, nigdy dwa wiersze ani 3.
 
-Po poprawkach: `npm test` i `npm run build`, dopisz raport 25 w `REPORTS.md` i ustaw status na `READY FOR REVIEW`.
+Po poprawkach: `npm test` i `npm run build`, dopisz raport 25 w `REPORTS.md` (commit osobny dla każdej z dwóch poprawek).
+
+**NIE zatrzymuj się po raporcie 25.** Wykonaj od razu zadania 26–39 poniżej, na tej samej gałęzi, w podanej kolejności. Użytkownik jest nieobecny około godziny, więc nikt nie odpowie na pytania: gdy zadanie wymaga czegoś, czego nie ma (zmiana bazy, funkcji serwerowej, nowej zależności), oznacz je w raporcie jako `BLOCKED` z jednym zdaniem dlaczego i **przejdź do następnego**, nie wymyślaj obejść.
+
+Zasady wspólne dla 26–39 (jak wcześniej, plus): jeden commit na zadanie, po każdym `npm test` i `npm run build` przechodzą, osobny wpis w `REPORTS.md` na zadanie, zakaz zmian w `supabase/`, `package.json`, `package-lock.json`, `.env*`; błędy operacji widoczne (`role="alert"`), potwierdzenia i ładowanie w `role="status"`; teksty w `pl.json` i `en.json`; nie dodawaj zależności; nie przepisuj istniejących plików poza zakresem zadania. Na końcu paczki ustaw status paczki na `READY FOR REVIEW`.
+
+### Zadanie 26: Dom w Ustawieniach (kod zaproszenia, liczba osób)
+
+Files: `src/features/settings/*` (widok i strona), `src/features/household/useHousehold.ts` (dodaj `memberCount`), `src/App.tsx` (usuń kod zaproszenia ze stopki), `src/i18n/*.json`, testy.
+Ustawienia pokazują nazwę domu, kod zaproszenia z przyciskiem "Kopiuj" (`navigator.clipboard.writeText`, przy braku API pole tylko do zaznaczenia; potwierdzenie `role="status"`), oraz liczbę osób w domu (`select count` z `members` po `household_id`; brak odczytu = ukryj linię). Testy: kopiowanie, brak schowka, liczba osób.
+
+### Zadanie 27: Edycja przepisu
+
+Files: `src/features/recipes/RecipesView.tsx` (+ test), `useRecipes.ts` (dodaj `update(id, patch)`), `RecipesPage.tsx`, `src/domain/recipe.ts` (dodaj `formatIngredient(i: Ingredient): string`, odwrotność `parseIngredient`) + test, `src/i18n/*.json`.
+Przy przepisie przycisk "Edytuj" otwiera formularz wypełniony tytułem, składnikami (jeden w linii, `formatIngredient`) i krokami; "Zapisz" woła `onUpdate(id, { title, ingredients, steps })`, "Anuluj" zamyka bez zmian. Pusty tytuł zablokowany. Testy: round-trip `parseIngredient(formatIngredient(x))` (całkowite, ułamkowe), zapis, anulowanie, pusty tytuł.
+
+### Zadanie 28: Plan pokazuje, czego brakuje
+
+Files: `src/domain/plan.ts` lub nowy `src/domain/availability.ts` (dodaj `missingFor(recipe: Recipe, fridge: FridgeItem[]): Ingredient[]`) + test, `src/features/plan/PlanView.tsx` (+ test), `PlanPage.tsx`, `src/i18n/*.json`.
+`missingFor` zwraca składniki, których w lodówce brakuje lub jest za mało (porównanie po `normalizeName` i jednostce, jak w `buildShoppingList`; ilość brakująca = różnica). Przy każdym dniu planu: "Wszystko jest" albo "Brakuje: N". Testy domenowe: komplet, brak, za mało, inna jednostka, pusty przepis.
+
+### Zadanie 29: Filtr przepisów
+
+Files: `src/features/recipes/RecipesView.tsx` (+ test), `src/i18n/*.json`, korzysta z `missingFor` z zadania 28 (przekazane propsem `fridge: FridgeItem[]`; `RecipesPage` dostarcza z `useFridge`).
+Pole wyszukiwania po tytule (bez rozróżniania wielkości liter i polskich znaków diakrytycznych: `normalize('NFD')` bez znaków łączących) oraz przełącznik "Tylko to, co mogę ugotować teraz" (`missingFor(...).length === 0`). Licznik wyników w `role="status"`. Testy: wyszukiwanie "zupa" znajduje "Żurek z zupą"? (nie: tylko tytuły zawierające frazę), "zolc" vs "żółć", filtr "ugotuję teraz".
+
+### Zadanie 30: Lista zakupów: ręczne dodawanie i porządek
+
+Files: `src/features/shopping/ShoppingView.tsx` (+ test), `ShoppingPage.tsx`, `useShopping.ts` (użyj `addMany`, `deleteByIds`), `src/i18n/*.json`.
+Formularz dodania pozycji (nazwa, ilość, jednostka), przycisk "Usuń" przy pozycji (bez potwierdzenia, bo to lista tymczasowa), "Wyczyść odhaczone" (usuwa tylko odhaczone, tylko gdy są). Pozycje odhaczone na dole listy, kolejność względna zachowana. Testy: dodanie, usunięcie, czyszczenie, kolejność.
+
+### Zadanie 31: Wyszukiwanie w lodówce
+
+Files: `src/features/fridge/FridgeView.tsx` (+ test), `src/i18n/*.json`.
+Pole "Szukaj w lodówce" filtrujące po nazwie (tak samo jak w 29, wydziel wspólną `matchesQuery(text, query)` do `src/domain/search.ts` + test i użyj w obu miejscach). Brak wyników: osobny komunikat, nie "lodówka pusta". Licznik w `role="status"`.
+
+### Zadanie 32: Nawigacja po tygodniach w planie
+
+Files: `src/features/plan/PlanPage.tsx`, `PlanView.tsx` (+ test), `src/i18n/*.json`.
+Przyciski "Poprzedni tydzień" / "Następny tydzień" / "Ten tydzień" przesuwają początek o ±7 dni (`weekDays(startISO)`), etykieta zakresu dat (`Intl.DateTimeFormat` z językiem interfejsu). "Losuj tydzień" losuje wyświetlany tydzień. Nie zmieniaj logiki listy zakupów. Test: przesunięcie, powrót, zakres dat przez granicę miesiąca.
+
+### Zadanie 33: Ugotowane: odejmij z lodówki (z podglądem)
+
+Files: nowy `src/domain/consume.ts` (`consumePlan(recipe: Recipe, fridge: FridgeItem[]): { updates: { id: string; newQuantity: number }[]; deletes: string[] }`) + test, `src/features/plan/PlanView.tsx` + `PlanPage.tsx`, `src/i18n/*.json`.
+Funkcja: dla każdego składnika znajdź w lodówce wiersze o tej samej nazwie i jednostce, odejmuj od tych o **najbliższej dacie ważności najpierw** (`null` na końcu), wiersz spadający do 0 trafia do `deletes`, nigdy nie schodź poniżej 0, składników bez pokrycia nie ruszaj. Przy dniu planu przycisk "Ugotowane": **najpierw podgląd** (lista "Zużyję: …"), dopiero "Potwierdź" wykonuje zmiany; "Anuluj" nic nie zmienia. Błąd w trakcie: komunikat, bez ponawiania po cichu. Testy domenowe: kolejność FEFO, wyczerpanie, niewystarczająca ilość, inna jednostka, brak składnika.
+
+### Zadanie 34: Stany ładowania danych
+
+Files: `src/features/fridge/useFridge.ts`, `recipes/useRecipes.ts`, `plan/useMealPlan.ts`, `shopping/useShopping.ts` (każdy zwraca dodatkowo `loading: boolean`, `true` do pierwszego zakończonego `load`), odpowiadające `*Page.tsx` i widoki (prop `loading`), testy, `src/i18n/*.json`.
+Podczas pierwszego ładowania widok pokazuje "Ładowanie…" (`role="status"`) zamiast stanu pustego ("Lodówka jest pusta" nie może mignąć przed danymi). Testy widoków z `loading`.
+
+### Zadanie 35: Błędy ładowania danych
+
+Files: te same hooki co w 34 (dodaj `error: boolean` i `reload(): void`), strony i widoki, testy, `src/i18n/*.json`.
+Dziś `const { data } = await ...` ignoruje błąd. Gdy zapytanie zwróci `error`, widok pokazuje `role="alert"` "Nie udało się wczytać danych" z przyciskiem "Spróbuj ponownie" (`reload`), a poprzednie dane zostają na ekranie. Testy hooków z zamockowanym `supabase` (błąd, potem sukces po `reload`) oraz widoków.
+
+### Zadanie 36: Daty zgodne z językiem
+
+Files: nowy `src/lib/format.ts` (`formatDate(iso: string, locale: string): string` przez `Intl.DateTimeFormat`, strefa UTC, bezpieczne dla niepoprawnego wejścia: zwraca wejście) + test, użycie w `FridgeView` (data ważności), `PlanView`, `ShoppingView` jeśli są daty; `src/i18n/*.json` bez zmian jeśli nie trzeba.
+Daty w interfejsie wyświetlane lokalnie ("3 paź 2026" / "Oct 3, 2026"), a wartości w polach `type="date"` i w bazie bez zmian (ISO). Testy: pl, en, niepoprawna data, granica roku.
+
+### Zadanie 37: Kopiowanie listy zakupów
+
+Files: `src/features/shopping/ShoppingView.tsx` (+ test), `src/domain/shopping.ts` (dodaj `formatShoppingList(items, locale): string`, tylko nieodhaczone, jedna pozycja w linii "- 2 l mleko") + test, `src/i18n/*.json`.
+Przycisk "Kopiuj listę": `navigator.share` jeśli dostępne, inaczej `navigator.clipboard.writeText`, inaczej komunikat. Potwierdzenie w `role="status"`, błąd w `role="alert"`. Testy: format (puste, same odhaczone, mieszane), wybór metody.
+
+### Zadanie 38: Motyw: jasny, ciemny, systemowy
+
+Files: `src/features/settings/*` (przełącznik), nowy `src/lib/theme.ts` (+ test), `src/styles.css` (zmienne pod `:root[data-theme="light"|"dark"]`, domyślnie bez atrybutu = systemowy), `src/main.tsx` (zastosuj zapisany wybór przed renderem), `src/i18n/*.json`.
+Wybór zapisany w `localStorage` (każdy odczyt i zapis w `try/catch`, aplikacja działa bez niego). Testy: odczyt/zapis, błąd `localStorage`, ustawienie atrybutu.
+
+### Zadanie 39: Dokumentacja
+
+Files: `README.md` (zaktualizuj opis funkcji PL i EN o to, co powstało w 18–38), nowy `docs/ARCHITECTURE.md` (po polsku: warstwy `domain`/`features`/`lib`, przepływ danych hook → strona → widok, jak działa realtime, gdzie są granice zaufania i sekrety, jak dodać nową funkcję AI, jak uruchomić testy, konwencje tłumaczeń).
+Bez sekretów i bez prawdziwych adresów projektu. Na końcu `npm test` i `npm run build`, status paczki `READY FOR REVIEW`.
 Gałąź (jedna na całą paczkę): `task/18-24-photo`, utworzona z `main` (commity `a89896c`, `8cb10e1`, `df2afd6`, `f2eef1d`, `c631ebf`, `e8df326`, `c25a076`)
 
 Zasady paczki jak w poprzednich (jeden commit na zadanie, kolejność 18 → 24, `npm test` i `npm run build` po każdym, osobny wpis w `REPORTS.md` na zadanie, zatrzymaj się po 24 albo na `BLOCKER`, błędy widoczne w UI przez `role="alert"`, brak nowych zależności, brak surowych komunikatów serwera). Wyjątek od reguły "nie ruszaj `supabase/`": zadania 18 i 19 edytują **wyłącznie** `supabase/functions/ai/*` (nie `_shared`, nie `migrations`, nie `save-key`). Wdrożenie funkcji robi Claude po przeglądzie, nie wdrażaj.
