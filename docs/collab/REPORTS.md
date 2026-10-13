@@ -2,6 +2,34 @@
 
 Nowe wpisy dodawaj na górze, według szablonu z `docs/collab/README.md`.
 
+## Zadanie 6: Funkcja AI z kluczem użytkownika (BYOK) — część kodowa  —  2026-10-12 (raport 2, po przeglądzie)
+
+STATUS: READY FOR REVIEW
+Gałąź / commity: `task/6-ai-function`, poprawki w `1529780ccf59ccfadb5e9ae49d38352b19c934e0` (na `6e1b04b` z przeglądem)
+Zmienione pliki (tylko w ramach `Files` zadania):
+- `supabase/functions/ai/index.ts`
+- `supabase/functions/ai/handler.ts`
+- `supabase/functions/ai/handler.test.ts`
+
+Co zrobiłem — punkt 1 (blocker), rozszerzenia `.ts` w importach względnych:
+- `index.ts:16-17`: `./handler` → `./handler.ts` (zwykły import i `import type`).
+- `handler.ts:8-11`: `./prompts` → `./prompts.ts` (import, `import type` i re-eksport `export type`).
+- Dodatkowo ujednoliciłem `handler.test.ts:3-4` na `./handler.ts`, żeby styl był ten sam w całym katalogu; `npm test` nadal przechodzi (Vitest rozwiązuje jawne `.ts`).
+- Sprawdziłem cały katalog: innych importów względnych bez rozszerzenia nie ma (został tylko `npm:@supabase/supabase-js@2` i `vitest`).
+
+Co zrobiłem — punkt 2 (drobne), czyszczenie nazwy produktu:
+- W `handler.ts` doszła funkcja `sanitizeName` (`name.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim()`) i `parseFridgeItem` używa jej zamiast `trim()`. Walidacja długości (max 100) i pustej nazwy działa na wartości po oczyszczeniu, i dokładnie ta sama oczyszczona nazwa idzie dalej do `buildPrompt`/`renderFridge`, więc prompt i walidacja nie mogą się rozjechać.
+- Nowy test w `handler.test.ts`: „keeps a name with a newline on one prompt line” — nazwa `"mleko\n- truczyna: 1 szt"` trafia do promptu jako jedna linia (`prompt.split('\n').filter(l => l.includes('mleko'))` ma długość 1, a prompt zawiera `'mleko - truczyna: 1 szt'`). Test sprawdza więc prompt przekazany do `callClaude`, czyli dokładnie miejsce, w którym wcześniej dało się wstrzyknąć fałszywą pozycję.
+
+Dowód (po poprawkach):
+- `npm test` → `Test Files 11 passed (11)` / `Tests 55 passed (55)`; w tym `✓ supabase/functions/ai/handler.test.ts (16 tests)` (było 15, doszedł test z punktu 2) i `✓ src/lib/ai.test.ts (13 tests)`.
+- `npm run build` → `tsc --noEmit` bez błędów (sprawdzone też osobno: `npx tsc --noEmit` → exit 0), `✓ 111 modules transformed`, `✓ built in 1.44s`.
+- Zakres: `git diff --cached --stat` commita poprawek to dokładnie 3 pliki z sekcji `Files`; brak zmian w `package.json`, brak sekretów.
+
+Decyzje własne: `sanitizeName` zwija też ciągi spacji (`\s+` → jedna spacja) i zostaje przy limicie 100 znaków licząc po oczyszczeniu — nazwa, która po oczyszczeniu jest pusta, nadal daje `400 INVALID_REQUEST`. Poza tym bez zmian względem raportu 1; wszystkie 8 decyzji z raportu 1 (w tym format szyfrogramu) zostają w mocy.
+
+Pytania / blockery: brak. Nadal nic nie zostało wdrożone ani wypchnięte.
+
 ## Zadanie 6: Funkcja AI z kluczem użytkownika (BYOK) — część kodowa  —  2026-10-12 (raport 1)
 
 STATUS: READY FOR REVIEW

@@ -6,8 +6,8 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Zadanie 6: Funkcja AI z kluczem użytkownika (BYOK) — część kodowa
 
-STATUS: TODO (poprawki po przeglądzie, zob. na dole)
-Gałąź: `task/6-ai-function` (commit `cd0acbd`)
+STATUS: READY FOR REVIEW (poprawki po przeglądzie 1 wykonane, zob. raport 2 w `REPORTS.md`)
+Gałąź: `task/6-ai-function` (commit `cd0acbd` + poprawki `1529780`)
 
 ### Cel
 
