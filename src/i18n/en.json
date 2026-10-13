@@ -1,4 +1,4 @@
-﻿{
+{
     "app":  {
                 "name":  "Fridgely",
                 "tagline":  "Plan meals. Waste less food."
@@ -39,7 +39,14 @@
                    "addExpiry":  "Add expiry date",
                    "expired":  "Expired",
                    "soon":  "Soon",
-                   "remove":  "Remove"
+                   "remove":  "Remove",
+                   "barcode":  "Barcode",
+                   "barcodeSearch":  "Search",
+                   "barcodeSearching":  "Searching…",
+                   "barcodeNotFound":  "Product not found. Type the name yourself.",
+                   "barcodeAdd":  "Add",
+                   "barcodeScan":  "Scan with camera",
+                   "barcodeScanError":  "Could not start the camera. Enter the code manually."
                },
     "recipes":  {
                     "title":  "Recipe title",
@@ -57,5 +64,30 @@
     "shopping":  {
                      "generate":  "Build list from plan",
                      "empty":  "Nothing to buy."
+                 },
+    "ai":  {
+               "fromFridge":  "Recipe from my fridge",
+               "dinnerFromExpiring":  "Dinner from what expires next",
+               "loading":  "Putting a recipe together…",
+               "emptyFridge":  "Add products to your fridge first.",
+               "ingredients":  "Ingredients",
+               "steps":  "Steps",
+               "missing":  "To buy",
+               "save":  "Save to my recipes",
+               "saved":  "Saved to your recipes.",
+               "next":  "Another one",
+               "noKey":  "No Claude key yet. Add one in Settings to use AI.",
+               "genericError":  "Could not get a recipe. Please try again.",
+               "retry":  "Try again"
+           },
+    "settings":  {
+                     "key":  "Claude key",
+                     "keySaved":  "Key saved (…{{last4}})",
+                     "noKey":  "No key",
+                     "save":  "Save key",
+                     "clear":  "Remove key",
+                     "invalidKey":  "The key must start with sk-ant-.",
+                     "saveFailed":  "Could not save the key. Please try again.",
+                     "language":  "Language"
                  }
 }

@@ -1,0 +1,248 @@
+/* Fridgely UI styles.
+   Mobile-first and deliberately plain: no dependencies, no preprocessor.
+   Components are styled by element and state selectors only, so no component
+   had to change for this file to exist. */
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1b1f26;
+  --muted: #5b626d;
+  --border: #d3d8df;
+  --accent: #1f6f4a;
+  --accent-text: #ffffff;
+  --expired: #b3261e;
+  --soon: #8a4b00;
+  --focus: #1554b0;
+  --radius: 10px;
+  --gap: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171b;
+    --surface: #1d2126;
+    --text: #eef1f5;
+    --muted: #a9b1bd;
+    --border: #333a43;
+    --accent: #3f9e70;
+    --accent-text: #08120c;
+    --expired: #ff8a80;
+    --soon: #ffbe6b;
+    --focus: #8ab4ff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+}
+
+header {
+  padding-top: 16px;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0 0 var(--gap);
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin: 24px 0 var(--gap);
+}
+
+h3 {
+  font-size: 1.1rem;
+  margin: 16px 0 8px;
+}
+
+h4 {
+  font-size: 1rem;
+  margin: 16px 0 4px;
+}
+
+p {
+  margin: 8px 0;
+}
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+/* Tabs */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+nav button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-bottom-width: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-weight: 500;
+}
+
+nav button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  border-bottom-color: var(--text);
+  font-weight: 700;
+}
+
+/* Controls: never smaller than a fingertip */
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  max-width: 100%;
+}
+
+button {
+  cursor: pointer;
+}
+
+button[type='submit'] {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  align-items: flex-end;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+label input,
+label select {
+  color: var(--text);
+}
+
+/* Lists */
+ul,
+ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+li {
+  margin-bottom: 8px;
+}
+
+ul:has(li[data-status]) {
+  list-style: none;
+  padding-left: 0;
+}
+
+li[data-status] {
+  border-left: 6px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--bg);
+}
+
+li[data-status='expired'] {
+  border-left-color: var(--expired);
+}
+
+li[data-status='soon'] {
+  border-left-color: var(--soon);
+}
+
+li[data-status='unknown'] {
+  border-left-color: var(--border);
+  color: var(--muted);
+}
+
+li[data-status='expired'] strong {
+  color: var(--expired);
+}
+
+li[data-status='soon'] strong {
+  color: var(--soon);
+}
+
+video {
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--radius);
+  background: #000;
+}
+
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

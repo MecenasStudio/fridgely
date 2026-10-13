@@ -1,4 +1,4 @@
-﻿{
+{
     "app":  {
                 "name":  "Fridgely",
                 "tagline":  "Planuj posiłki. Nie marnuj jedzenia."
@@ -39,7 +39,14 @@
                    "addExpiry":  "Uzupełnij datę ważności",
                    "expired":  "Przeterminowane",
                    "soon":  "Wkrótce",
-                   "remove":  "Usuń"
+                   "remove":  "Usuń",
+                   "barcode":  "Kod kreskowy",
+                   "barcodeSearch":  "Szukaj",
+                   "barcodeSearching":  "Szukam…",
+                   "barcodeNotFound":  "Nie znaleziono produktu. Wpisz nazwę ręcznie.",
+                   "barcodeAdd":  "Dodaj",
+                   "barcodeScan":  "Skanuj kamerą",
+                   "barcodeScanError":  "Nie udało się uruchomić kamery. Wpisz kod ręcznie."
                },
     "recipes":  {
                     "title":  "Nazwa przepisu",
@@ -57,5 +64,30 @@
     "shopping":  {
                      "generate":  "Utwórz listę z planu",
                      "empty":  "Nic do kupienia."
+                 },
+    "ai":  {
+               "fromFridge":  "Przepis z lodówki",
+               "dinnerFromExpiring":  "Obiad z tego, co się przeterminuje",
+               "loading":  "Układam przepis…",
+               "emptyFridge":  "Najpierw dodaj produkty do lodówki.",
+               "ingredients":  "Składniki",
+               "steps":  "Kroki",
+               "missing":  "Do kupienia",
+               "save":  "Zapisz do moich przepisów",
+               "saved":  "Zapisane w przepisach.",
+               "next":  "Kolejny",
+               "noKey":  "Brak klucza Claude. Dodaj go w Ustawieniach, żeby korzystać z AI.",
+               "genericError":  "Nie udało się pobrać przepisu. Spróbuj ponownie.",
+               "retry":  "Spróbuj ponownie"
+           },
+    "settings":  {
+                     "key":  "Klucz Claude",
+                     "keySaved":  "Klucz zapisany (…{{last4}})",
+                     "noKey":  "Brak klucza",
+                     "save":  "Zapisz klucz",
+                     "clear":  "Usuń klucz",
+                     "invalidKey":  "Klucz musi zaczynać się od sk-ant-.",
+                     "saveFailed":  "Nie udało się zapisać klucza. Spróbuj ponownie.",
+                     "language":  "Język"
                  }
 }

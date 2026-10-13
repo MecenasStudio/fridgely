@@ -1,7 +1,8 @@
-﻿import { useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { expiryStatus, sortByExpiry } from '../../domain/fridge'
 import type { FridgeItem } from '../../domain/types'
 import { FridgeItemForm, type NewFridgeItem } from './FridgeItemForm'
+import { BarcodeAdd } from './BarcodeAdd'
 
 type Props = {
   items: FridgeItem[]
@@ -19,6 +20,7 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
     <section>
       <h2>{t('nav.fridge')}</h2>
       <FridgeItemForm onAdd={onAdd} />
+      <BarcodeAdd onAdd={onAdd} />
       {sorted.length === 0 ? (
         <p>{t('fridge.empty')}</p>
       ) : (
