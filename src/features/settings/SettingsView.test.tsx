@@ -237,3 +237,22 @@ describe('SettingsView household', () => {
     await i18n.changeLanguage('en')
   })
 })
+
+describe('SettingsView theme', () => {
+  it('shows the three choices, marks the current one and reports a change', () => {
+    const onTheme = vi.fn()
+    renderView({ theme: 'dark', onTheme })
+
+    expect(screen.getByRole('radio', { name: 'System' })).toHaveProperty('checked', false)
+    expect(screen.getByRole('radio', { name: 'Light' })).toHaveProperty('checked', false)
+    expect(screen.getByRole('radio', { name: 'Dark' })).toHaveProperty('checked', true)
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Light' }))
+    expect(onTheme).toHaveBeenCalledWith('light')
+  })
+
+  it('hides the theme fieldset when the page does not handle it', () => {
+    renderView({})
+    expect(screen.queryByRole('radio', { name: 'Dark' })).toBeNull()
+  })
+})

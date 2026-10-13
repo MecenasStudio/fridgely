@@ -175,6 +175,10 @@
                      "copy":  "Kopiuj",
                      "copied":  "Skopiowane.",
                      "copyFailed":  "Nie udało się skopiować. Kod jest zaznaczony — skopiuj go ręcznie.",
+                     "theme":  "Motyw",
+                     "theme_system":  "Systemowy",
+                     "theme_light":  "Jasny",
+                     "theme_dark":  "Ciemny",
                      "language":  "Język"
                  },
     "photo":  {

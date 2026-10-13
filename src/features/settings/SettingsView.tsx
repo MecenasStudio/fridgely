@@ -6,6 +6,9 @@ type Props = {
   language: string
   /** Household details; `null` means "not known (yet)", which hides that line. */
   household?: { name: string | null; inviteCode: string | null; memberCount: number | null }
+  /** Chosen theme; `system` follows the device. */
+  theme?: 'system' | 'light' | 'dark'
+  onTheme?(theme: 'system' | 'light' | 'dark'): void
   onSave(key: string): Promise<void>
   onClear(): Promise<void>
   onLanguage(lang: 'pl' | 'en'): void
@@ -23,7 +26,7 @@ function errorCodeOf(error: unknown): string | undefined {
   return typeof code === 'string' ? code : undefined
 }
 
-export function SettingsView({ status, language, household, onSave, onClear, onLanguage }: Props) {
+export function SettingsView({ status, language, household, theme = 'system', onTheme, onSave, onClear, onLanguage }: Props) {
   const { t } = useTranslation()
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
@@ -159,6 +162,24 @@ export function SettingsView({ status, language, household, onSave, onClear, onL
           <option value="en">English</option>
         </select>
       </label>
+
+      {onTheme && (
+        <fieldset>
+          <legend>{t('settings.theme')}</legend>
+          {(['system', 'light', 'dark'] as const).map((option) => (
+            <label key={option}>
+              <input
+                type="radio"
+                name="theme"
+                value={option}
+                checked={theme === option}
+                onChange={() => onTheme(option)}
+              />{' '}
+              {t(`settings.theme_${option}`)}
+            </label>
+          ))}
+        </fieldset>
+      )}
     </section>
   )
 }

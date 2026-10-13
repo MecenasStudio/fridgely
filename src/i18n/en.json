@@ -175,6 +175,10 @@
                      "copy":  "Copy",
                      "copied":  "Copied.",
                      "copyFailed":  "Could not copy. The code is selected — copy it by hand.",
+                     "theme":  "Theme",
+                     "theme_system":  "System",
+                     "theme_light":  "Light",
+                     "theme_dark":  "Dark",
                      "language":  "Language"
                  },
     "photo":  {

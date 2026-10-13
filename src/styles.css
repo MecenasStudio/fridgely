@@ -18,8 +18,28 @@
   --gap: 12px;
 }
 
+/* Explicit choices from Settings. Without the attribute the system decides (below). */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #14171b;
+  --surface: #1d2126;
+  --text: #eef1f5;
+  --muted: #a9b1bd;
+  --border: #333a43;
+  --accent: #3f9e70;
+  --accent-text: #08120c;
+  --expired: #ff8a80;
+  --soon: #ffbe6b;
+  --focus: #8ab4ff;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
     --bg: #14171b;
     --surface: #1d2126;
     --text: #eef1f5;
