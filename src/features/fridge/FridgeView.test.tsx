@@ -166,8 +166,7 @@ describe('FridgeView', () => {
     expect(screen.getByTestId('name').textContent).toBe('Milk')
   })
 
-  it('alerts about a failed load, keeps the rows and retries on demand', () => {
-    const onReload = vi.fn()
+  it('alerts about a failed load, keeps the rows and retries on demand', () => {    const onReload = vi.fn()
     render(
       <FridgeView
         items={[item('a', 'Milk', '2026-10-10')]}
@@ -186,5 +185,22 @@ describe('FridgeView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(onReload).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the expiry date in the interface language, keeping the field ISO', () => {
+    render(
+      <FridgeView
+        items={[item('a', 'Milk', '2026-10-03')]}
+        today="2026-10-12"
+        locale="en"
+        onAdd={noop}
+        onUpdate={noop}
+        onRemove={noop}
+      />,
+    )
+
+    // The human-readable date is shown, while the input still carries the ISO value.
+    expect(screen.getByText('Oct 3, 2026')).toBeTruthy()
+    expect((screen.getByLabelText('Expiry date: Milk') as HTMLInputElement).value).toBe('2026-10-03')
   })
 })

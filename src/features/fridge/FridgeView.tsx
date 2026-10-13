@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { expiryStatus, sortByExpiry } from '../../domain/fridge'
 import { matchesQuery } from '../../domain/search'
 import type { FridgeItem } from '../../domain/types'
+import { formatDate } from '../../lib/format'
 import { FridgeItemForm, type NewFridgeItem } from './FridgeItemForm'
 import { BarcodeAdd } from './BarcodeAdd'
 import { PhotoImport, ReadDateButton } from './PhotoImport'
@@ -68,16 +69,20 @@ function QuantityInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update 
 }
 
 /** Expiry editor, also for products that already have a date; clearing it stores null. */
-function ExpiryInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update }) {
+function ExpiryInput({ item, onUpdate, locale }: { item: FridgeItem; onUpdate: Update; locale: string }) {
   const { t } = useTranslation()
 
   return (
-    <input
-      type="date"
-      aria-label={t('fridge.expiresOnOf', { name: item.name })}
-      value={item.expiresOn ?? ''}
-      onChange={(e) => void onUpdate(item.id, { expiresOn: e.target.value || null })}
-    />
+    <>
+      <input
+        type="date"
+        aria-label={t('fridge.expiresOnOf', { name: item.name })}
+        value={item.expiresOn ?? ''}
+        onChange={(e) => void onUpdate(item.id, { expiresOn: e.target.value || null })}
+      />{' '}
+      {/* The field itself stays ISO; this is the human-readable form of the same date. */}
+      {item.expiresOn && <span>{formatDate(item.expiresOn, locale)}</span>}
+    </>
   )
 }
 
@@ -163,7 +168,7 @@ export function FridgeView({
                 <span>{item.quantity} {item.unit}</span>{' '}
                 <QuantityInput item={item} onUpdate={update} />{' '}
                 {status === 'unknown' && <>{t('fridge.addExpiry')} </>}
-                <ExpiryInput item={item} onUpdate={update} />{' '}
+                <ExpiryInput item={item} onUpdate={update} locale={locale} />{' '}
                 {readDate && (
                   <ReadDateButton name={item.name} onClick={() => setDateTarget({ id: item.id, name: item.name })} />
                 )}{' '}
