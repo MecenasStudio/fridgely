@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { expiryStatus, sortByExpiry } from '../../domain/fridge'
 import type { FridgeItem } from '../../domain/types'
@@ -12,9 +13,74 @@ type Props = {
   onRemove: (id: string) => Promise<void>
 }
 
+type Update = (id: string, patch: Partial<NewFridgeItem>) => Promise<void>
+
+/**
+ * Quantity editor. The value is written on blur or Enter, and only when it is a positive
+ * number that actually changed; anything else snaps back to the stored value.
+ */
+function QuantityInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update }) {
+  const { t } = useTranslation()
+  const [value, setValue] = useState(String(item.quantity))
+
+  useEffect(() => setValue(String(item.quantity)), [item.quantity])
+
+  async function commit() {
+    const parsed = Number(value.replace(',', '.'))
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed === item.quantity) {
+      setValue(String(item.quantity))
+      return
+    }
+    await onUpdate(item.id, { quantity: parsed })
+  }
+
+  return (
+    <input
+      type="number"
+      min="0"
+      step="any"
+      aria-label={t('fridge.quantityOf', { name: item.name })}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => void commit()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          void commit()
+        }
+      }}
+    />
+  )
+}
+
+/** Expiry editor, also for products that already have a date; clearing it stores null. */
+function ExpiryInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update }) {
+  const { t } = useTranslation()
+
+  return (
+    <input
+      type="date"
+      aria-label={t('fridge.expiresOnOf', { name: item.name })}
+      value={item.expiresOn ?? ''}
+      onChange={(e) => void onUpdate(item.id, { expiresOn: e.target.value || null })}
+    />
+  )
+}
+
 export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
   const { t } = useTranslation()
   const sorted = sortByExpiry(items)
+  const [failedId, setFailedId] = useState<string | null>(null)
+
+  // Every write goes through here, so a failed update always shows up on that row.
+  async function update(id: string, patch: Partial<NewFridgeItem>) {
+    setFailedId(null)
+    try {
+      await onUpdate(id, patch)
+    } catch {
+      setFailedId(id)
+    }
+  }
 
   return (
     <section>
@@ -31,19 +97,13 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove }: Props) {
               <li key={item.id} data-status={status}>
                 <span data-testid="name">{item.name}</span>{' '}
                 <span>{item.quantity} {item.unit}</span>{' '}
-                {status === 'unknown' ? (
-                  <label>
-                    {t('fridge.addExpiry')}{' '}
-                    <input type="date" onChange={(e) => e.target.value && onUpdate(item.id, { expiresOn: e.target.value })} />
-                  </label>
-                ) : (
-                  <span>
-                    {item.expiresOn}
-                    {status === 'expired' && <strong> {t('fridge.expired')}</strong>}
-                    {status === 'soon' && <strong> {t('fridge.soon')}</strong>}
-                  </span>
-                )}{' '}
+                <QuantityInput item={item} onUpdate={update} />{' '}
+                {status === 'unknown' && <>{t('fridge.addExpiry')} </>}
+                <ExpiryInput item={item} onUpdate={update} />{' '}
+                {status === 'expired' && <strong>{t('fridge.expired')} </strong>}
+                {status === 'soon' && <strong>{t('fridge.soon')} </strong>}
                 <button type="button" onClick={() => onRemove(item.id)} aria-label={`${t('fridge.remove')} ${item.name}`}>×</button>
+                {failedId === item.id && <p role="alert">{t('fridge.updateFailed')}</p>}
               </li>
             )
           })}
