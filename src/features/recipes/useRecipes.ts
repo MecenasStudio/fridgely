@@ -8,13 +8,21 @@ export function useRecipes(householdId: string) {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   // True until the first load settles, so the view does not flash its empty state.
   const [loading, setLoading] = useState(true)
+  // True when the last load failed; the view keeps showing whatever it had before.
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('recipes')
       .select('id, title, ingredients, steps')
       .eq('household_id', householdId)
       .order('created_at')
+    if (loadError) {
+      setError(true)
+      setLoading(false)
+      return
+    }
+    setError(false)
     setRecipes((data as Row[] | null) ?? [])
     setLoading(false)
   }, [householdId])
@@ -51,5 +59,5 @@ export function useRecipes(householdId: string) {
     )
   }
 
-  return { recipes, loading, add, del, update }
+  return { recipes, loading, error, reload: load, add, del, update }
 }

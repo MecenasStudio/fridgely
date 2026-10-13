@@ -7,6 +7,7 @@ import { FridgeItemForm, type NewFridgeItem } from './FridgeItemForm'
 import { BarcodeAdd } from './BarcodeAdd'
 import { PhotoImport, ReadDateButton } from './PhotoImport'
 import type { ReadDate, Recognize } from './PhotoImport'
+import { LoadError } from '../common/LoadError'
 
 type Props = {
   items: FridgeItem[]
@@ -20,6 +21,10 @@ type Props = {
   readDate?: ReadDate
   /** True until the first load settles: shows "Loading…" instead of the empty state. */
   loading?: boolean
+  /** True when the last load failed. */
+  error?: boolean
+  /** Retries the failing load. */
+  onReload?: () => void
 }
 
 type Update = (id: string, patch: Partial<NewFridgeItem>) => Promise<void>
@@ -76,7 +81,19 @@ function ExpiryInput({ item, onUpdate }: { item: FridgeItem; onUpdate: Update })
   )
 }
 
-export function FridgeView({ items, today, onAdd, onUpdate, onRemove, locale = 'en', recognize, readDate, loading = false }: Props) {
+export function FridgeView({
+  items,
+  today,
+  onAdd,
+  onUpdate,
+  onRemove,
+  locale = 'en',
+  recognize,
+  readDate,
+  loading = false,
+  error = false,
+  onReload,
+}: Props) {
   const { t } = useTranslation()
   const sorted = sortByExpiry(items)
   const [failedId, setFailedId] = useState<string | null>(null)
@@ -106,6 +123,7 @@ export function FridgeView({ items, today, onAdd, onUpdate, onRemove, locale = '
   return (
     <section>
       <h2>{t('nav.fridge')}</h2>
+      <LoadError error={error} onRetry={onReload} />
       <FridgeItemForm onAdd={onAdd} />
       <BarcodeAdd onAdd={onAdd} />
       {recognize && readDate && (

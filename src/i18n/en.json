@@ -4,7 +4,9 @@
                 "tagline":  "Plan meals. Waste less food."
             },
     "common":  {
-                   "loading":  "Loading…"
+                   "loading":  "Loading…",
+                   "loadFailed":  "Could not load the data.",
+                   "retry":  "Try again"
                },
     "nav":  {
                 "fridge":  "Fridge",

@@ -11,7 +11,7 @@ function resolveLocale(language: string | undefined): AiLocale {
 
 export function FridgePage({ householdId }: { householdId: string }) {
   const { i18n } = useTranslation()
-  const { items, add, update, remove, loading } = useFridge(householdId)
+  const { items, add, update, remove, loading, error, reload } = useFridge(householdId)
 
   return (
     <FridgeView
@@ -21,6 +21,8 @@ export function FridgePage({ householdId }: { householdId: string }) {
       onUpdate={update}
       onRemove={remove}
       loading={loading}
+      error={error}
+      onReload={reload}
       locale={resolveLocale(i18n.resolvedLanguage)}
       recognize={recognizePhoto}
       readDate={readLabelDate}

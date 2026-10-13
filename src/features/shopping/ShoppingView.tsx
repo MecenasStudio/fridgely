@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Ingredient } from '../../domain/types'
+import { LoadError } from '../common/LoadError'
 
 export type ShoppingItem = { id: string; name: string; quantity: number; unit: string; checked: boolean }
 
@@ -15,6 +16,10 @@ type Props = {
   onMoveChecked(): Promise<void>
   /** True until the first load settles: shows "Loading…" instead of the empty state. */
   loading?: boolean
+  /** True when the last load failed. */
+  error?: boolean
+  /** Retries the failing load. */
+  onReload?: () => void
 }
 
 /** Checked rows sink to the bottom; within each group the original order is kept. */
@@ -31,6 +36,8 @@ export function ShoppingView({
   onClearChecked,
   onMoveChecked,
   loading = false,
+  error = false,
+  onReload,
 }: Props) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
@@ -83,6 +90,7 @@ export function ShoppingView({
   return (
     <section>
       <h2>{t('nav.shopping')}</h2>
+      <LoadError error={error} onRetry={onReload} />
 
       <form onSubmit={submit}>
         <label>

@@ -4,28 +4,41 @@ import { useFridge } from './useFridge'
 // A chainable stub: `select` resolves with the loaded rows, `insert`/`update` record
 // their payload and resolve without error.
 const { db } = vi.hoisted(() => {
-  const calls = { inserts: [] as Record<string, unknown>[], updates: [] as Record<string, unknown>[] }
+  const calls = {
+    inserts: [] as Record<string, unknown>[],
+    updates: [] as Record<string, unknown>[],
+    selects: 0,
+  }
+  const state = { failSelect: false, rows: [] as unknown[] }
   const from = () => {
     const chain: Record<string, unknown> = {}
-    const result = Promise.resolve({ data: [] as unknown[], error: null })
+    const result = () =>
+      Promise.resolve(
+        state.failSelect && calls.selects > 0
+          ? { data: null, error: { message: 'permission denied' } }
+          : { data: state.rows, error: null },
+      )
     Object.assign(chain, {
-      select: () => chain,
+      select: () => {
+        calls.selects += 1
+        return chain
+      },
       eq: () => chain,
       order: () => chain,
       insert: (row: Record<string, unknown>) => {
         calls.inserts.push(row)
-        return result
+        return Promise.resolve({ data: null, error: null })
       },
       update: (row: Record<string, unknown>) => {
         calls.updates.push(row)
         return chain
       },
       delete: () => chain,
-      then: (resolve: (value: unknown) => unknown) => result.then(resolve),
+      then: (resolve: (value: unknown) => unknown) => result().then(resolve),
     })
     return chain
   }
-  return { db: { calls, from } }
+  return { db: { calls, state, from } }
 })
 
 vi.mock('../../lib/supabase', () => ({
@@ -42,6 +55,42 @@ vi.mock('../../lib/supabase', () => ({
 beforeEach(() => {
   db.calls.inserts.length = 0
   db.calls.updates.length = 0
+  db.state.failSelect = false
+  db.state.rows = []
+})
+
+describe('useFridge loading and errors', () => {
+  it('starts loading and reports the rows once they arrive', async () => {
+    db.state.rows = [{ id: 'a', name: 'Mleko', quantity: 1, unit: 'l', expires_on: null }]
+    const { result } = renderHook(() => useFridge('h1'))
+
+    expect(result.current.loading).toBe(true)
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.error).toBe(false)
+    expect(result.current.items).toHaveLength(1)
+  })
+
+  it('reports a failed load and recovers on reload without dropping what it had', async () => {
+    db.state.rows = [{ id: 'a', name: 'Mleko', quantity: 1, unit: 'l', expires_on: null }]
+    const { result } = renderHook(() => useFridge('h1'))
+    await waitFor(() => expect(result.current.items).toHaveLength(1))
+
+    // The next load fails: the error is flagged and the row stays on screen.
+    db.state.failSelect = true
+    await act(async () => {
+      await result.current.reload()
+    })
+    expect(result.current.error).toBe(true)
+    expect(result.current.items).toHaveLength(1)
+
+    // Once the server answers again, reload clears the error.
+    db.state.failSelect = false
+    await act(async () => {
+      await result.current.reload()
+    })
+    expect(result.current.error).toBe(false)
+    expect(result.current.items).toHaveLength(1)
+  })
 })
 
 describe('useFridge.add', () => {

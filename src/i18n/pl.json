@@ -4,7 +4,9 @@
                 "tagline":  "Planuj posiłki. Nie marnuj jedzenia."
             },
     "common":  {
-                   "loading":  "Ładowanie…"
+                   "loading":  "Ładowanie…",
+                   "loadFailed":  "Nie udało się wczytać danych.",
+                   "retry":  "Spróbuj ponownie"
                },
     "nav":  {
                 "fridge":  "Lodówka",

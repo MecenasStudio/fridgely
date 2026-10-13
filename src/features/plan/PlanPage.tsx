@@ -14,9 +14,14 @@ export function PlanPage({ householdId }: { householdId: string }) {
   const [start, setStart] = useState(today)
   const days = weekDays(start)
 
-  const { recipes, loading: recipesLoading } = useRecipes(householdId)
+  const { recipes, loading: recipesLoading, error: recipesError, reload: reloadRecipes } = useRecipes(householdId)
   const { items, update: updateFridge, remove: removeFromFridge, loading: fridgeLoading } = useFridge(householdId)
-  const { plan, set, setMany, loading: planLoading } = useMealPlan(householdId, days)
+  const { plan, set, setMany, loading: planLoading, error: planError, reload: reloadPlan } = useMealPlan(householdId, days)
+
+  const reload = () => {
+    void reloadRecipes()
+    void reloadPlan()
+  }
 
   const randomize = async () => {
     const picked = pickWeek(recipes, items, Math.random)
@@ -52,6 +57,8 @@ export function PlanPage({ householdId }: { householdId: string }) {
       onThisWeek={() => setStart(today)}
       onConsume={consume}
       loading={recipesLoading || fridgeLoading || planLoading}
+      error={recipesError || planError}
+      onReload={reload}
       onSet={set}
       onRandomize={randomize}
     />

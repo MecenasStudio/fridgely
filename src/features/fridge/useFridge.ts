@@ -23,6 +23,8 @@ export function useFridge(householdId: string) {
   const [items, setItems] = useState<FridgeItem[]>([])
   // True until the first load settles, so the view can show "loading" instead of "empty".
   const [loading, setLoading] = useState(true)
+  // True when the last load failed; the view keeps showing whatever it had before.
+  const [error, setError] = useState(false)
   // The newest list React may not have committed yet. `add` merges against this one, so
   // a loop of adds (photo import, "move bought to the fridge") sees its own earlier calls.
   const current = useRef<FridgeItem[]>([])
@@ -33,10 +35,17 @@ export function useFridge(householdId: string) {
   }, [])
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('fridge_items')
       .select('id, name, quantity, unit, expires_on')
       .eq('household_id', householdId)
+    if (loadError) {
+      // Keep the rows already on screen; only report the failure.
+      setError(true)
+      setLoading(false)
+      return
+    }
+    setError(false)
     commit((data ?? []).map(fromRow))
     setLoading(false)
   }, [householdId, commit])
@@ -93,5 +102,5 @@ export function useFridge(householdId: string) {
     if (error) throw error
   }
 
-  return { items, loading, add, update, remove }
+  return { items, loading, error, reload: load, add, update, remove }
 }

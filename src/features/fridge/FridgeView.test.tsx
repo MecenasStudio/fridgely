@@ -165,4 +165,26 @@ describe('FridgeView', () => {
     expect(screen.queryByText('Loading…')).toBeNull()
     expect(screen.getByTestId('name').textContent).toBe('Milk')
   })
+
+  it('alerts about a failed load, keeps the rows and retries on demand', () => {
+    const onReload = vi.fn()
+    render(
+      <FridgeView
+        items={[item('a', 'Milk', '2026-10-10')]}
+        today="2026-10-12"
+        error
+        onReload={onReload}
+        onAdd={noop}
+        onUpdate={noop}
+        onRemove={noop}
+      />,
+    )
+
+    expect(screen.getByRole('alert').textContent).toContain('Could not load the data.')
+    // The data that was already there stays visible.
+    expect(screen.getByTestId('name').textContent).toBe('Milk')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(onReload).toHaveBeenCalledTimes(1)
+  })
 })

@@ -5,16 +5,24 @@ export function useMealPlan(householdId: string, days: string[]) {
   const [plan, setPlan] = useState<Record<string, string | null>>({})
   // True until the first load settles, so the view does not flash empty days.
   const [loading, setLoading] = useState(true)
+  // True when the last load failed; the view keeps showing whatever it had before.
+  const [error, setError] = useState(false)
   const first = days[0]
   const last = days[days.length - 1]
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('meal_plan')
       .select('day, recipe_id')
       .eq('household_id', householdId)
       .gte('day', first)
       .lte('day', last)
+    if (loadError) {
+      setError(true)
+      setLoading(false)
+      return
+    }
+    setError(false)
     setPlan(Object.fromEntries((data ?? []).map((r) => [r.day as string, r.recipe_id as string | null])))
     setLoading(false)
   }, [householdId, first, last])
@@ -47,5 +55,5 @@ export function useMealPlan(householdId: string, days: string[]) {
     if (error) throw error
   }
 
-  return { plan, loading, set, setMany }
+  return { plan, loading, error, reload: load, set, setMany }
 }

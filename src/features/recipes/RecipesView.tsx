@@ -4,6 +4,7 @@ import { formatIngredient, parseIngredient } from '../../domain/recipe'
 import { missingFor } from '../../domain/plan'
 import { matchesQuery } from '../../domain/search'
 import type { FridgeItem, Ingredient, Recipe } from '../../domain/types'
+import { LoadError } from '../common/LoadError'
 
 type Props = {
   recipes: Recipe[]
@@ -14,6 +15,10 @@ type Props = {
   onUpdate: (id: string, patch: { title: string; ingredients: Ingredient[]; steps: string[] }) => Promise<void>
   /** True until the first load settles: shows "Loading…" instead of the empty state. */
   loading?: boolean
+  /** True when the last load failed. */
+  error?: boolean
+  /** Retries the failing load. */
+  onReload?: () => void
 }
 
 /**
@@ -142,7 +147,7 @@ function EditRecipeForm({
   )
 }
 
-export function RecipesView({ recipes, fridge = [], onAdd, onDelete, onUpdate, loading = false }: Props) {
+export function RecipesView({ recipes, fridge = [], onAdd, onDelete, onUpdate, loading = false, error = false, onReload }: Props) {
   const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [ingredients, setIngredients] = useState('')
@@ -187,6 +192,7 @@ export function RecipesView({ recipes, fridge = [], onAdd, onDelete, onUpdate, l
   return (
     <section>
       <h2>{t('nav.recipes')}</h2>
+      <LoadError error={error} onRetry={onReload} />
       <form onSubmit={submit}>
         <input required placeholder={t('recipes.title')} value={title} onChange={(e) => setTitle(e.target.value)} />
         <textarea placeholder={t('recipes.ingredientsHint')} value={ingredients} onChange={(e) => setIngredients(e.target.value)} />

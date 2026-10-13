@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { consumePlan, type ConsumeResult } from '../../domain/consume'
 import { missingFor } from '../../domain/plan'
 import type { FridgeItem, Recipe } from '../../domain/types'
+import { LoadError } from '../common/LoadError'
 
 type Props = {
   days: string[]
@@ -20,6 +21,10 @@ type Props = {
   onConsume?: (change: ConsumeResult) => Promise<void>
   /** True until the first load settles: shows "Loading…" instead of empty days. */
   loading?: boolean
+  /** True when the last load failed. */
+  error?: boolean
+  /** Retries the failing load. */
+  onReload?: () => void
   onSet: (day: string, recipeId: string | null) => Promise<void>
   onRandomize: () => Promise<void>
 }
@@ -57,6 +62,8 @@ export function PlanView({
   onThisWeek,
   onConsume,
   loading = false,
+  error = false,
+  onReload,
   onSet,
   onRandomize,
 }: Props) {
@@ -98,6 +105,7 @@ export function PlanView({
   return (
     <section>
       <h2>{t('nav.plan')}</h2>
+      <LoadError error={error} onRetry={onReload} />
       {onShiftWeek && (
         <p>
           <button type="button" onClick={() => onShiftWeek(-1)}>

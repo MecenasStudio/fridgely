@@ -7,13 +7,21 @@ export function useShopping(householdId: string) {
   const [items, setItems] = useState<ShoppingItem[]>([])
   // True until the first load settles, so the view does not flash "nothing to buy".
   const [loading, setLoading] = useState(true)
+  // True when the last load failed; the view keeps showing whatever it had before.
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('shopping_items')
       .select('id, name, quantity, unit, checked')
       .eq('household_id', householdId)
       .order('created_at')
+    if (loadError) {
+      setError(true)
+      setLoading(false)
+      return
+    }
+    setError(false)
     setItems(((data ?? []) as ShoppingItem[]).map((i) => ({ ...i, quantity: Number(i.quantity) })))
     setLoading(false)
   }, [householdId])
@@ -69,5 +77,5 @@ export function useShopping(householdId: string) {
     setItems((current) => current.filter((item) => item.id !== id))
   }
 
-  return { items, loading, toggle, replaceAll, addMany, deleteByIds, remove }
+  return { items, loading, error, reload: load, toggle, replaceAll, addMany, deleteByIds, remove }
 }
