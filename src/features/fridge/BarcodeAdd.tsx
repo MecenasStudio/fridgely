@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { lookupBarcode } from '../../lib/openFoodFacts'
+import { validateItem } from '../../domain/validate'
 import type { NewFridgeItem } from './FridgeItemForm'
 
 type Props = {
@@ -175,14 +176,22 @@ function ManualName({ onAdd }: { onAdd(name: string): Promise<void> }) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [failed, setFailed] = useState(false)
+  const [invalid, setInvalid] = useState(false)
   const [saving, setSaving] = useState(false)
 
   async function submit() {
     if (saving) return
+    // The length rule is the same one the server applies to every product name.
+    const checked = validateItem({ name, quantity: 1, unit: 'szt' })
+    if (!checked.ok) {
+      setInvalid(true)
+      return
+    }
+    setInvalid(false)
     setSaving(true)
     setFailed(false)
     try {
-      await onAdd(name.trim())
+      await onAdd(checked.value.name)
       setName('')
     } catch {
       // The typed name stays in the field for another attempt.
@@ -201,6 +210,7 @@ function ManualName({ onAdd }: { onAdd(name: string): Promise<void> }) {
       <button type="button" disabled={name.trim().length === 0 || saving} onClick={() => void submit()}>
         {t('fridge.barcodeAdd')}
       </button>
+      {invalid && <p role="alert">{t('fridge.invalidName')}</p>}
       {failed && <p role="alert">{t('fridge.addFailed')}</p>}
     </>
   )

@@ -170,9 +170,9 @@ describe('PlanView cooking', () => {
     expect(onConsume).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-    await waitFor(() =>
-      expect(onConsume).toHaveBeenCalledWith({ updates: [{ id: 'f1', newQuantity: 3 }], deletes: [] }),
-    )
+    await waitFor(() => expect(onConsume).toHaveBeenCalledTimes(1))
+    // The payload is computed from the snapshot, not from a re-read of the live list.
+    expect(onConsume).toHaveBeenCalledWith(expect.objectContaining({ updates: [{ id: 'f1', newQuantity: 3 }], deletes: [] }))
   })
 
   it('cancels without writing', () => {
@@ -200,6 +200,7 @@ describe('PlanView cooking', () => {
     const onConsume = vi.fn(async () => {
       throw new Error('update denied')
     })
+    const onReload = vi.fn()
     render(
       <PlanView
         days={days}
@@ -207,6 +208,7 @@ describe('PlanView cooking', () => {
         plan={{ '2026-10-12': 'r1' }}
         fridge={[{ id: 'f1', name: 'jajka', quantity: 2, unit: 'szt', expiresOn: null }]}
         onConsume={onConsume}
+        onReload={onReload}
         onSet={async () => {}}
         onRandomize={async () => {}}
       />,
@@ -216,13 +218,121 @@ describe('PlanView cooking', () => {
     expect(screen.getByText('jajka: 2 szt')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-    expect(await screen.findByRole('alert')).toHaveProperty(
-      'textContent',
-      'Could not save the fridge changes. Nothing was changed silently — check the fridge and try again.',
-    )
+    // dnd-kit's live region makes `findByRole('alert')` slow, so the message itself is awaited.
+    expect(
+      await screen.findByText('Part of the changes may have been saved. Check the fridge before trying again.'),
+    ).toBeTruthy()
+    // The message belongs to the day it happened on, not to every row.
+    expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1)
     expect(screen.queryByText('update denied')).toBeNull()
-    // The preview is still there for another look.
-    expect(screen.getByText('I will use from the fridge:')).toBeTruthy()
+    // A failed write closes the preview and reloads the fridge: there must be no one-click
+    // retry that would subtract the same ingredients twice.
+    expect(onReload).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('I will use from the fridge:')).toBeNull()
+  })
+
+  it('refuses to write when the fridge changed while the preview was open', async () => {
+    const onConsume = vi.fn(async () => {})
+    const onReload = vi.fn()
+    const { rerender } = render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[{ id: 'f1', name: 'jajka', quantity: 6, unit: 'szt', expiresOn: null }]}
+        onConsume={onConsume}
+        onReload={onReload}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cooked' }))
+    expect(screen.getByText('jajka: 3 szt')).toBeTruthy()
+
+    // Realtime brings a changed quantity for the same row while the preview is on screen.
+    rerender(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[{ id: 'f1', name: 'jajka', quantity: 4, unit: 'szt', expiresOn: null }]}
+        onConsume={onConsume}
+        onReload={onReload}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    // The numbers on screen still come from the snapshot …
+    expect(screen.getByText('jajka: 3 szt')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(await screen.findByText('The fridge changed. Open the preview again.')).toBeTruthy()
+    expect(onConsume).not.toHaveBeenCalled()
+    expect(screen.queryByText('I will use from the fridge:')).toBeNull()
+  })
+
+  it('refuses to write when a row disappeared while the preview was open', async () => {
+    const onConsume = vi.fn(async () => {})
+    const { rerender } = render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[
+          { id: 'f1', name: 'jajka', quantity: 6, unit: 'szt', expiresOn: null },
+          { id: 'f2', name: 'masło', quantity: 1, unit: 'szt', expiresOn: null },
+        ]}
+        onConsume={onConsume}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cooked' }))
+    rerender(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[{ id: 'f1', name: 'jajka', quantity: 6, unit: 'szt', expiresOn: null }]}
+        onConsume={onConsume}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(await screen.findByText('The fridge changed. Open the preview again.')).toBeTruthy()
+    expect(onConsume).not.toHaveBeenCalled()
+  })
+
+  it('writes the change computed from the snapshot on the happy path', async () => {
+    const onConsume = vi.fn(async () => {})
+    render(
+      <PlanView
+        days={days}
+        recipes={[omelette]}
+        plan={{ '2026-10-12': 'r1' }}
+        fridge={[
+          { id: 'f1', name: 'jajka', quantity: 6, unit: 'szt', expiresOn: null },
+          { id: 'f2', name: 'masło', quantity: 1, unit: 'szt', expiresOn: null },
+        ]}
+        onConsume={onConsume}
+        onSet={async () => {}}
+        onRandomize={async () => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cooked' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(onConsume).toHaveBeenCalledTimes(1))
+    expect(onConsume).toHaveBeenCalledWith({ updates: [{ id: 'f1', newQuantity: 3 }], deletes: [] })
+    // The preview closes and no error is shown.
+    expect(screen.queryByText('I will use from the fridge:')).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('says so when the recipe uses nothing from the fridge', () => {

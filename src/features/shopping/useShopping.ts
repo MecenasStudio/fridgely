@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { subscribeToHousehold } from '../../lib/realtime'
 import type { Ingredient } from '../../domain/types'
 import type { ShoppingItem } from './ShoppingView'
 
@@ -28,13 +29,9 @@ export function useShopping(householdId: string) {
 
   useEffect(() => {
     load()
-    const channel = supabase
-      .channel(`shopping:${householdId}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'shopping_items', filter: `household_id=eq.${householdId}` },
-        () => { load() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Filtering and debouncing live in `subscribeToHousehold`, the single place allowed
+    // to build a Realtime filter.
+    return subscribeToHousehold('shopping_items', householdId, load)
   }, [householdId, load])
 
   const toggle = async (id: string, checked: boolean) => {

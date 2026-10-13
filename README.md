@@ -89,6 +89,17 @@ Obie funkcje używają roli service i wymagają sekretów ustawionych po stronie
 2. Do przeglądarki wraca wyłącznie końcówka klucza (`key_last4`); pełny klucz nie jest nigdzie zapisywany po stronie klienta, nie trafia do logów ani do odpowiedzi funkcji.
 3. Każde zapytanie do Claude przechodzi przez funkcję `ai`, która sama odczytuje i deszyfruje klucz. W wersji 1 klucz jest zawsze kluczem użytkownika — aplikacja nie ma własnego klucza.
 
+### Eksport danych i prywatność
+
+W Ustawieniach jest przycisk **Pobierz moje dane**: zapisuje przepisy, lodówkę, listę zakupów i plan tygodnia jako plik `fridgely-RRRR-MM-DD.json`. W pliku nie ma nic poza danymi domu — żadnego klucza API, jego końcówki, adresu e-mail ani identyfikatorów użytkowników. Krótka sekcja „Prywatność" w Ustawieniach opisuje to, co aplikacja faktycznie robi:
+
+- dane domu (przepisy, lodówka, lista zakupów, plan) są w bazie Supabase i widoczne dla członków domu;
+- klucz Claude jest przechowywany zaszyfrowany po stronie serwera i nigdy nie wraca do przeglądarki w całości — widać tylko jego końcówkę;
+- zdjęcia są najpierw zmniejszane w przeglądarce, a potem wysyłane przez funkcję serwerową do Anthropic razem z kluczem użytkownika; Fridgely ich nie zapisuje;
+- kody kreskowe są sprawdzane w Open Food Facts, żeby odczytać nazwę produktu.
+
+Historia zmian jest w `CHANGELOG.md`, a układ kodu i granice zaufania w `docs/ARCHITECTURE.md`.
+
 ### Współpraca
 
 Zasady pracy i podział ról opisuje `docs/collab/README.md`, zlecenia `docs/collab/TASKS.md`, a raporty `docs/collab/REPORTS.md`. Specyfikacja i plan projektu są w `docs/superpowers/`.
@@ -175,6 +186,17 @@ Both functions use the service role and need secrets set on the Supabase side (`
 1. The user pastes their Claude key in Settings. It travels in a single request to `save-key`, where it is encrypted and stored in `user_secrets`.
 2. Only the tail of the key (`key_last4`) comes back to the browser; the full key is never kept client-side, never logged and never returned by a function.
 3. Every Claude request goes through the `ai` function, which reads and decrypts the key itself. In version 1 the key is always the user's own — the app ships no key of its own.
+
+### Data export and privacy
+
+Settings has a **Download my data** button: it saves your recipes, fridge, shopping list and week plan as a `fridgely-YYYY-MM-DD.json` file. The file holds nothing but the household data — no API key, no key tail, no e-mail address and no user ids. A short "Privacy" section in Settings describes what the app actually does:
+
+- household data (recipes, fridge, shopping list, plan) lives in a Supabase database and is visible to the members of the household;
+- the Claude key is stored encrypted on the server and never comes back to the browser in full — only its last characters are shown;
+- photos are downscaled in the browser first and then sent through a server function to Anthropic together with your key; Fridgely does not store them;
+- barcodes are looked up in Open Food Facts to read the product name.
+
+The change history is in `CHANGELOG.md`, and the code layout plus trust boundaries in `docs/ARCHITECTURE.md`.
 
 ### Collaboration
 

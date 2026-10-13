@@ -255,4 +255,35 @@ describe('PhotoImport', () => {
     expect(within(row).getByLabelText('Unit')).toBeTruthy()
     expect(within(row).getByLabelText('Expiry date')).toBeTruthy()
   })
+
+  it('blocks the whole batch and names the row when one row is invalid', async () => {
+    const onAdd = vi.fn(async () => {})
+    renderImport({ onAdd })
+    pickFile(screen.getByLabelText('Add from a photo'))
+    await screen.findByDisplayValue('Mleko')
+
+    // The second row gets a quantity the server would refuse.
+    const eggsRow = screen.getByDisplayValue('Jajka').closest('tr') as HTMLElement
+    fireEvent.change(within(eggsRow).getByLabelText('Quantity'), { target: { value: '0' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add all' }))
+
+    expect(await screen.findByText('Row 2 has invalid data. Fix it and try again.')).toBeTruthy()
+    expect(onAdd).not.toHaveBeenCalled()
+    // Nothing is cleared, so the user can fix the row and try again.
+    expect(screen.getByDisplayValue('Mleko')).toBeTruthy()
+    expect(screen.getByDisplayValue('Jajka')).toBeTruthy()
+  })
+
+  it('blocks a row whose name is too long', async () => {
+    const onAdd = vi.fn(async () => {})
+    renderImport({ onAdd })
+    pickFile(screen.getByLabelText('Add from a photo'))
+    await screen.findByDisplayValue('Mleko')
+
+    fireEvent.change(screen.getByDisplayValue('Mleko'), { target: { value: 'x'.repeat(101) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add all' }))
+
+    expect(await screen.findByText('Row 1 has invalid data. Fix it and try again.')).toBeTruthy()
+    expect(onAdd).not.toHaveBeenCalled()
+  })
 })

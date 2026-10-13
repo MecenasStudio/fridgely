@@ -9,6 +9,8 @@ type Props = {
   /** Chosen theme; `system` follows the device. */
   theme?: 'system' | 'light' | 'dark'
   onTheme?(theme: 'system' | 'light' | 'dark'): void
+  /** Downloads the household data; hidden when the page does not provide it. */
+  onExport?(): void
   onSave(key: string): Promise<void>
   onClear(): Promise<void>
   onLanguage(lang: 'pl' | 'en'): void
@@ -26,7 +28,7 @@ function errorCodeOf(error: unknown): string | undefined {
   return typeof code === 'string' ? code : undefined
 }
 
-export function SettingsView({ status, language, household, theme = 'system', onTheme, onSave, onClear, onLanguage }: Props) {
+export function SettingsView({ status, language, household, theme = 'system', onTheme, onExport, onSave, onClear, onLanguage }: Props) {
   const { t } = useTranslation()
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
@@ -180,6 +182,26 @@ export function SettingsView({ status, language, household, theme = 'system', on
           ))}
         </fieldset>
       )}
+
+      {onExport && (
+        <p>
+          <button type="button" onClick={() => onExport()}>
+            {t('settings.export')}
+          </button>{' '}
+          {t('settings.exportHint')}
+        </p>
+      )}
+
+      {/* Only what the code actually does; no legal promises. */}
+      <section>
+        <h3>{t('settings.privacy')}</h3>
+        <ul>
+          <li>{t('settings.privacyHousehold')}</li>
+          <li>{t('settings.privacyKey')}</li>
+          <li>{t('settings.privacyPhotos')}</li>
+          <li>{t('settings.privacyBarcodes')}</li>
+        </ul>
+      </section>
     </section>
   )
 }

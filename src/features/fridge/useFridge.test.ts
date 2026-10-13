@@ -7,6 +7,9 @@ const { db } = vi.hoisted(() => {
   const calls = {
     inserts: [] as Record<string, unknown>[],
     updates: [] as Record<string, unknown>[],
+    deletes: [] as string[],
+    /** Filters passed to `.eq(...)`: the second argument is the id a write targets. */
+    eq: [] as [string, unknown][],
     selects: 0,
   }
   const state = { failSelect: false, rows: [] as unknown[] }
@@ -18,12 +21,16 @@ const { db } = vi.hoisted(() => {
           ? { data: null, error: { message: 'permission denied' } }
           : { data: state.rows, error: null },
       )
+    const trackEq = (...args: unknown[]) => {
+      calls.eq.push(args as [string, unknown])
+      return chain
+    }
     Object.assign(chain, {
       select: () => {
         calls.selects += 1
         return chain
       },
-      eq: () => chain,
+      eq: trackEq,
       order: () => chain,
       insert: (row: Record<string, unknown>) => {
         calls.inserts.push(row)
@@ -33,7 +40,15 @@ const { db } = vi.hoisted(() => {
         calls.updates.push(row)
         return chain
       },
-      delete: () => chain,
+      delete: () => {
+        const target: Record<string, unknown> = {}
+        target.eq = (...args: unknown[]) => {
+          calls.deletes.push(String(args[1]))
+          return target
+        }
+        target.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ error: null }).then(resolve)
+        return target
+      },
       then: (resolve: (value: unknown) => unknown) => result().then(resolve),
     })
     return chain
@@ -55,9 +70,17 @@ vi.mock('../../lib/supabase', () => ({
 beforeEach(() => {
   db.calls.inserts.length = 0
   db.calls.updates.length = 0
+  db.calls.deletes.length = 0
+  db.calls.eq.length = 0
+  db.calls.selects = 0
   db.state.failSelect = false
   db.state.rows = []
 })
+
+/** The id a write actually targeted. */
+function lastTargetedId(): unknown {
+  return db.calls.eq[db.calls.eq.length - 1]?.[1]
+}
 
 describe('useFridge loading and errors', () => {
   it('starts loading and reports the rows once they arrive', async () => {
@@ -141,5 +164,83 @@ describe('useFridge.add', () => {
     expect(db.calls.inserts).toHaveLength(3)
     expect(db.calls.updates).toHaveLength(0)
     expect(result.current.items).toHaveLength(3)
+  })
+})
+
+describe('useFridge rows with a local id', () => {
+  it('reloads and writes to the real row when updating a row added in this session', async () => {
+    const { result } = renderHook(() => useFridge('h1'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    // The product does not exist on the server yet, so `add` inserts it and tracks it as
+    // `local-1` until the next load.
+    await act(async () => {
+      await result.current.add({ name: 'Mleko', quantity: 1, unit: 'l', expiresOn: null })
+    })
+    const localId = result.current.items[0].id
+    expect(localId.startsWith('local-')).toBe(true)
+
+    // The reload inside `update` now finds the row the server created.
+    db.state.rows = [{ id: 'server-1', name: 'Mleko', quantity: 1, unit: 'l', expires_on: null }]
+    const selectsBefore = db.calls.selects
+    await act(async () => {
+      await result.current.update(localId, { quantity: 3 })
+    })
+
+    expect(db.calls.selects).toBeGreaterThan(selectsBefore)
+    expect(lastTargetedId()).toBe('server-1')
+    expect(db.calls.updates).toEqual([{ quantity: 3 }])
+  })
+
+  it('reloads and deletes the real row when removing a row added in this session', async () => {
+    const { result } = renderHook(() => useFridge('h1'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      await result.current.add({ name: 'Jajka', quantity: 6, unit: 'szt', expiresOn: '2026-10-20' })
+    })
+    const localId = result.current.items[0].id
+
+    db.state.rows = [{ id: 'server-2', name: 'Jajka', quantity: 6, unit: 'szt', expires_on: '2026-10-20' }]
+    await act(async () => {
+      await result.current.remove(localId)
+    })
+
+    expect(db.calls.deletes).toEqual(['server-2'])
+    expect(result.current.items).toHaveLength(0)
+  })
+
+  it('throws FRIDGE_ROW_NOT_SYNCED when the reload cannot find the row', async () => {
+    const { result } = renderHook(() => useFridge('h1'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      await result.current.add({ name: 'Masło', quantity: 1, unit: 'szt', expiresOn: null })
+    })
+    const localId = result.current.items[0].id
+
+    // The server answers, but without that product (someone deleted it meanwhile).
+    db.state.rows = [{ id: 'server-3', name: 'Chleb', quantity: 1, unit: 'szt', expires_on: null }]
+    await expect(
+      act(async () => {
+        await result.current.update(localId, { quantity: 2 })
+      }),
+    ).rejects.toThrow('FRIDGE_ROW_NOT_SYNCED')
+
+    expect(db.calls.updates).toHaveLength(0)
+  })
+
+  it('does not reload for a normal server id', async () => {
+    db.state.rows = [{ id: 'server-9', name: 'Mleko', quantity: 1, unit: 'l', expires_on: null }]
+    const { result } = renderHook(() => useFridge('h1'))
+    await waitFor(() => expect(result.current.items).toHaveLength(1))
+
+    const selectsBefore = db.calls.selects
+    await act(async () => {
+      await result.current.update('server-9', { quantity: 2 })
+    })
+
+    expect(db.calls.selects).toBe(selectsBefore)
+    expect(lastTargetedId()).toBe('server-9')
   })
 })

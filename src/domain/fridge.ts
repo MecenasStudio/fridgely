@@ -1,7 +1,7 @@
+import { SOON_DAYS } from './limits'
 import type { FridgeItem } from './types'
 
 const DAY_MS = 86_400_000
-const SOON_DAYS = 3
 
 export function normalizeName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, ' ')

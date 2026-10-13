@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import i18n from './i18n'
 import App from './App'
 
@@ -143,5 +143,64 @@ describe('App', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
     expect(supabase.auth.signOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a bar while the browser is offline and hides it when the connection returns', async () => {
+    state.session = { user: { id: 'u1' } }
+    state.member = { household_id: 'h1' }
+    state.household = { id: 'h1', invite_code: 'abcd1234' }
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+
+    try {
+      await renderApp()
+      await screen.findByRole('button', { name: 'Fridge' })
+      expect(screen.getByText('No connection. Changes will not be saved.')).toBeTruthy()
+
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+      await act(async () => {
+        window.dispatchEvent(new Event('online'))
+      })
+      expect(screen.queryByText('No connection. Changes will not be saved.')).toBeNull()
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    }
+  })
+
+  it('offers a skip link as the first element and marks the active tab', async () => {
+    state.session = { user: { id: 'u1' } }
+    state.member = { household_id: 'h1' }
+    state.household = { id: 'h1', invite_code: 'abcd1234' }
+    await renderApp()
+    await screen.findByRole('button', { name: 'Fridge' })
+
+    const skip = screen.getByRole('link', { name: 'Skip to content' })
+    expect(skip.getAttribute('href')).toBe('#content')
+    // It is the first thing a keyboard user reaches.
+    const focusable = document.querySelectorAll('a[href], button, input, select, textarea')
+    expect(focusable[0]).toBe(skip)
+
+    const content = document.getElementById('content')
+    expect(content?.tagName).toBe('MAIN')
+    expect(content?.getAttribute('tabindex')).toBe('-1')
+
+    // The active tab says so, and only the active one.
+    const tabs = within(document.querySelector('nav') as HTMLElement)
+    expect(tabs.getByRole('button', { name: 'Fridge' }).getAttribute('aria-current')).toBe('page')
+    expect(tabs.getByRole('button', { name: 'Recipes' }).getAttribute('aria-current')).toBeNull()
+  })
+
+  it('moves the focus to the content after a tab switch', async () => {
+    state.session = { user: { id: 'u1' } }
+    state.member = { household_id: 'h1' }
+    state.household = { id: 'h1', invite_code: 'abcd1234' }
+    await renderApp()
+    await screen.findByRole('button', { name: 'Fridge' })
+
+    const tabs = within(document.querySelector('nav') as HTMLElement)
+    fireEvent.click(tabs.getByRole('button', { name: 'Recipes' }))
+    await screen.findByRole('heading', { name: 'Recipes' })
+
+    expect(document.activeElement).toBe(document.getElementById('content'))
+    expect(tabs.getByRole('button', { name: 'Recipes' }).getAttribute('aria-current')).toBe('page')
   })
 })

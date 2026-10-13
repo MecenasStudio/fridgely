@@ -5,8 +5,11 @@
             },
     "common":  {
                    "loading":  "Loading…",
+                   "skipToContent":  "Skip to content",
                    "loadFailed":  "Could not load the data.",
-                   "retry":  "Try again"
+                   "retry":  "Try again",
+                   "crashed":  "Something went wrong.",
+                   "offline":  "No connection. Changes will not be saved."
                },
     "nav":  {
                 "fridge":  "Fridge",
@@ -73,7 +76,10 @@
                    "barcodeAdd":  "Add",
                    "barcodeScan":  "Scan with camera",
                    "barcodeScanError":  "Could not start the camera. Enter the code manually.",
-                   "addFailed":  "Could not add the product. Please try again."
+                   "addFailed":  "Could not add the product. Please try again.",
+                   "invalidName":  "The name must be between 1 and 100 characters.",
+                   "invalidUnit":  "The unit must be between 1 and 20 characters.",
+                   "invalidQuantity":  "The quantity must be above 0 and at most 100000."
                },
     "recipes":  {
                     "title":  "Recipe title",
@@ -116,7 +122,8 @@
                  "consumeNothing":  "Nothing comes out of the fridge.",
                  "confirm":  "Confirm",
                  "cancel":  "Cancel",
-                 "consumeFailed":  "Could not save the fridge changes. Nothing was changed silently — check the fridge and try again."
+                 "consumeFailed":  "Part of the changes may have been saved. Check the fridge before trying again.",
+                 "consumeStale":  "The fridge changed. Open the preview again."
              },
     "shopping":  {
                      "generate":  "Build list from plan",
@@ -153,7 +160,8 @@
                "sessionExpired":  "Your session expired. Please sign in again.",
                "saveFailed":  "Could not save the recipe. Please try again.",
                "genericError":  "Could not get a recipe. Please try again.",
-               "retry":  "Try again"
+               "retry":  "Try again",
+               "offline":  "No connection. The AI buttons are turned off."
            },
     "settings":  {
                      "key":  "Claude key",
@@ -179,6 +187,13 @@
                      "theme_system":  "System",
                      "theme_light":  "Light",
                      "theme_dark":  "Dark",
+                     "export":  "Download my data",
+                     "exportHint":  "Saves your recipes, fridge, shopping list and week plan as a JSON file.",
+                     "privacy":  "Privacy",
+                     "privacyHousehold":  "Your household data (recipes, fridge, shopping list, plan) is stored in a Supabase database and visible to the members of the household.",
+                     "privacyKey":  "Your Claude key is stored encrypted on the server and never comes back to the browser in full — only its last characters are shown.",
+                     "privacyPhotos":  "Photos are downscaled in the browser first, then sent through a server function to Anthropic together with your key. Fridgely does not store them.",
+                     "privacyBarcodes":  "Barcodes are looked up in Open Food Facts to read the product name.",
                      "language":  "Language"
                  },
     "photo":  {
@@ -190,6 +205,7 @@
                   "noKey":  "No Claude key yet. Add one in Settings to use AI.",
                   "sessionExpired":  "Your session expired. Please sign in again.",
                   "addFailed":  "Could not add the products. The list is unchanged.",
+                  "invalidRow":  "Row {{row}} has invalid data. Fix it and try again.",
                   "name":  "Product name",
                   "quantity":  "Quantity",
                   "unit":  "Unit",

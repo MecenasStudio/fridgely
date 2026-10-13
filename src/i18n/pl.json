@@ -5,8 +5,11 @@
             },
     "common":  {
                    "loading":  "Ładowanie…",
+                   "skipToContent":  "Przejdź do treści",
                    "loadFailed":  "Nie udało się wczytać danych.",
-                   "retry":  "Spróbuj ponownie"
+                   "retry":  "Spróbuj ponownie",
+                   "crashed":  "Coś poszło nie tak.",
+                   "offline":  "Brak połączenia. Zmiany nie zostaną zapisane."
                },
     "nav":  {
                 "fridge":  "Lodówka",
@@ -73,7 +76,10 @@
                    "barcodeAdd":  "Dodaj",
                    "barcodeScan":  "Skanuj kamerą",
                    "barcodeScanError":  "Nie udało się uruchomić kamery. Wpisz kod ręcznie.",
-                   "addFailed":  "Nie udało się dodać produktu. Spróbuj ponownie."
+                   "addFailed":  "Nie udało się dodać produktu. Spróbuj ponownie.",
+                   "invalidName":  "Nazwa musi mieć od 1 do 100 znaków.",
+                   "invalidUnit":  "Jednostka musi mieć od 1 do 20 znaków.",
+                   "invalidQuantity":  "Ilość musi być większa od 0 i nie większa niż 100000."
                },
     "recipes":  {
                     "title":  "Nazwa przepisu",
@@ -116,7 +122,8 @@
                  "consumeNothing":  "Nic nie ubywa z lodówki.",
                  "confirm":  "Potwierdź",
                  "cancel":  "Anuluj",
-                 "consumeFailed":  "Nie udało się zapisać zmian w lodówce. Nic nie zostało zmienione po cichu — sprawdź lodówkę i spróbuj ponownie."
+                 "consumeFailed":  "Część zmian mogła zostać zapisana. Sprawdź lodówkę przed ponowieniem.",
+                 "consumeStale":  "Lodówka zmieniła się. Otwórz podgląd ponownie."
              },
     "shopping":  {
                      "generate":  "Utwórz listę z planu",
@@ -153,7 +160,8 @@
                "sessionExpired":  "Sesja wygasła. Zaloguj się ponownie.",
                "saveFailed":  "Nie udało się zapisać przepisu. Spróbuj ponownie.",
                "genericError":  "Nie udało się pobrać przepisu. Spróbuj ponownie.",
-               "retry":  "Spróbuj ponownie"
+               "retry":  "Spróbuj ponownie",
+               "offline":  "Brak połączenia. Przyciski AI są wyłączone."
            },
     "settings":  {
                      "key":  "Klucz Claude",
@@ -179,6 +187,13 @@
                      "theme_system":  "Systemowy",
                      "theme_light":  "Jasny",
                      "theme_dark":  "Ciemny",
+                     "export":  "Pobierz moje dane",
+                     "exportHint":  "Zapisze przepisy, lodówkę, listę zakupów i plan tygodnia jako plik JSON.",
+                     "privacy":  "Prywatność",
+                     "privacyHousehold":  "Dane domu (przepisy, lodówka, lista zakupów, plan) są przechowywane w bazie Supabase i widoczne dla członków domu.",
+                     "privacyKey":  "Twój klucz Claude jest przechowywany zaszyfrowany po stronie serwera i nigdy nie wraca do przeglądarki w całości — widać tylko jego końcówkę.",
+                     "privacyPhotos":  "Zdjęcia są najpierw zmniejszane w przeglądarce, a potem wysyłane przez funkcję serwerową do Anthropic razem z Twoim kluczem. Fridgely ich nie zapisuje.",
+                     "privacyBarcodes":  "Kody kreskowe są sprawdzane w Open Food Facts, żeby odczytać nazwę produktu.",
                      "language":  "Język"
                  },
     "photo":  {
@@ -190,6 +205,7 @@
                   "noKey":  "Brak klucza Claude. Dodaj go w Ustawieniach, żeby korzystać z AI.",
                   "sessionExpired":  "Sesja wygasła. Zaloguj się ponownie.",
                   "addFailed":  "Nie udało się dodać produktów. Lista została bez zmian.",
+                  "invalidRow":  "Wiersz {{row}} ma niepoprawne dane. Popraw go i spróbuj ponownie.",
                   "name":  "Nazwa produktu",
                   "quantity":  "Ilość",
                   "unit":  "Jednostka",

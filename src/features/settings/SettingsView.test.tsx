@@ -256,3 +256,55 @@ describe('SettingsView theme', () => {
     expect(screen.queryByRole('radio', { name: 'Dark' })).toBeNull()
   })
 })
+
+describe('SettingsView privacy section', () => {
+  it('states the four facts in English', () => {
+    renderView({})
+
+    expect(screen.getByRole('heading', { name: 'Privacy' })).toBeTruthy()
+    expect(screen.getByText(/stored in a Supabase database/)).toBeTruthy()
+    expect(screen.getByText(/stored encrypted on the server/)).toBeTruthy()
+    expect(screen.getByText(/downscaled in the browser/)).toBeTruthy()
+    expect(screen.getByText(/Open Food Facts/)).toBeTruthy()
+    // Four short bullets, not a wall of text.
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('states them in Polish too', async () => {
+    await i18n.changeLanguage('pl')
+    const { unmount } = render(
+      <SettingsView
+        status={noStatus}
+        language="pl"
+        onSave={noop}
+        onClear={noop}
+        onLanguage={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Prywatność' })).toBeTruthy()
+    expect(screen.getByText(/zaszyfrowany po stronie serwera/)).toBeTruthy()
+    expect(screen.getByText(/Open Food Facts/)).toBeTruthy()
+    // No fabricated legal claims in either language.
+    expect(document.body.textContent).not.toMatch(/RODO|GDPR/)
+
+    unmount()
+    await i18n.changeLanguage('en')
+  })
+})
+
+describe('SettingsView export', () => {
+  it('offers the download and reports the click', () => {
+    const onExport = vi.fn()
+    renderView({ onExport })
+
+    expect(screen.getByText(/Saves your recipes, fridge/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Download my data' }))
+    expect(onExport).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the download when the page does not provide it', () => {
+    renderView({})
+    expect(screen.queryByRole('button', { name: 'Download my data' })).toBeNull()
+  })
+})

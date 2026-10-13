@@ -50,6 +50,30 @@ describe('FridgeView', () => {
     expect(onAdd).toHaveBeenCalledWith({ name: 'Cheese', quantity: 1, unit: 'szt', expiresOn: null })
   })
 
+  it('refuses a name that is too long and a quantity of zero, saying which field', () => {
+    const onAdd = vi.fn(async () => {})
+    render(<FridgeView items={[]} today="2026-10-12" onAdd={onAdd} onUpdate={noop} onRemove={noop} />)
+
+    fireEvent.change(screen.getByPlaceholderText('Product name'), { target: { value: 'a'.repeat(101) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(onAdd).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe('The name must be between 1 and 100 characters.')
+
+    // A 100-character name is fine, but the quantity is not.
+    fireEvent.change(screen.getByPlaceholderText('Product name'), { target: { value: 'a'.repeat(100) } })
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '0' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(onAdd).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe('The quantity must be above 0 and at most 100000.')
+
+    // An over-long unit is the third rule.
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('Unit'), { target: { value: 'x'.repeat(21) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(onAdd).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe('The unit must be between 1 and 20 characters.')
+  })
+
   it('saves a new quantity on blur and on Enter', () => {
     const onUpdate = vi.fn(noop)
     render(<FridgeView items={[item('a', 'Milk', '2026-10-10')]} today="2026-10-12" onAdd={noop} onUpdate={onUpdate} onRemove={noop} />)

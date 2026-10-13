@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core'
 import { useTranslation } from 'react-i18next'
 import { consumePlan, type ConsumeResult } from '../../domain/consume'
+import { normalizeName } from '../../domain/fridge'
 import { missingFor } from '../../domain/plan'
 import type { FridgeItem, Recipe } from '../../domain/types'
 import { LoadError } from '../common/LoadError'
@@ -69,28 +70,83 @@ export function PlanView({
 }: Props) {
   const { t, i18n } = useTranslation()
   const fmt = new Intl.DateTimeFormat(i18n.language, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
-  const [preview, setPreview] = useState<{ day: string; change: ConsumeResult } | null>(null)
+  // The snapshot is taken when the preview opens: what the user sees is what will be used,
+  // even if Realtime refreshes the list while the preview is on screen.
+  const [preview, setPreview] = useState<{ day: string; snapshot: FridgeItem[] } | null>(null)
   const [consuming, setConsuming] = useState(false)
-  const [consumeFailed, setConsumeFailed] = useState(false)
+  // Scoped to a day: a failure in one row must not paint an alert on all seven.
+  const [consumeNotice, setConsumeNotice] = useState<{ day: string; kind: 'failed' | 'stale' } | null>(null)
 
   function onDragEnd(e: DragEndEvent) {
     if (e.over) onSet(String(e.over.id), String(e.active.id))
   }
 
-  /** Nothing is written until the user confirms the preview. */
+  /** The rows the preview was built from, as a plain `id: quantity` map. */
+  function snapshotQuantities(snapshot: FridgeItem[]): Map<string, number> {
+    return new Map(snapshot.map((item) => [item.id, item.quantity]))
+  }
+
+  /** The rows the snapshot was built from, as a plain `id: identity` map. */
+  function snapshotRows(snapshot: FridgeItem[]): Map<string, string> {
+    return new Map(snapshot.map((item) => [item.id, rowIdentity(item)]))
+  }
+
+  function rowIdentity(item: FridgeItem): string {
+    return `${normalizeName(item.name)}|${item.unit}|${item.expiresOn ?? ''}`
+  }
+
+  /**
+   * True when the fridge no longer matches the snapshot the user looked at: a row was added
+   * or removed, its identity changed, or its quantity moved. Writing the snapshot then would
+   * mean subtracting from a list the user never saw.
+   */
+  function isStale(snapshot: FridgeItem[]): boolean {
+    if (fridge.length !== snapshot.length) return true
+    const rows = snapshotRows(snapshot)
+    const quantities = snapshotQuantities(snapshot)
+    return fridge.some((item) => {
+      const identity = rows.get(item.id)
+      if (identity === undefined || identity !== rowIdentity(item)) return true
+      return quantities.get(item.id) !== item.quantity
+    })
+  }
+
+  /**
+   * Nothing is written until the user confirms the preview.
+   *
+   * The writes are not a transaction, so a failure in the middle can leave part of the
+   * subtraction applied. In that case the preview is closed (no one-click retry that would
+   * subtract twice), the fridge is reloaded to show the real state, and the user is told to
+   * check before trying again.
+   */
   async function confirmConsume() {
     if (!preview || !onConsume || consuming) return
+    setConsumeNotice(null)
+
+    if (isStale(preview.snapshot)) {
+      setPreview(null)
+      setConsumeNotice({ day: preview.day, kind: 'stale' })
+      return
+    }
+
     setConsuming(true)
-    setConsumeFailed(false)
     try {
-      await onConsume(preview.change)
+      const recipe = recipeForDay(preview.day)
+      // The recipe can be deleted (or moved to another day) while the preview is on screen.
+      if (!recipe) throw new Error('recipe is gone')
+      await onConsume(consumePlan(recipe, preview.snapshot))
       setPreview(null)
     } catch {
-      // The preview stays, so the user can look and try again deliberately.
-      setConsumeFailed(true)
+      setPreview(null)
+      setConsumeNotice({ day: preview.day, kind: 'failed' })
+      onReload?.()
     } finally {
       setConsuming(false)
     }
+  }
+
+  function recipeForDay(day: string): Recipe | null {
+    return recipes.find((r) => r.id === plan[day]) ?? null
   }
 
   if (loading) {
@@ -101,6 +157,12 @@ export function PlanView({
       </section>
     )
   }
+
+  // The preview is always computed from the snapshot the user opened, never from the live
+  // list, so the numbers on screen cannot change under their eyes.
+  const previewRecipe = preview ? recipeForDay(preview.day) : null
+  const previewChange: ConsumeResult =
+    preview && previewRecipe ? consumePlan(previewRecipe, preview.snapshot) : { updates: [], deletes: [] }
 
   return (
     <section>
@@ -145,7 +207,14 @@ export function PlanView({
                 {recipe && onConsume && (
                   <>
                     {' '}
-                    <button type="button" onClick={() => setPreview({ day, change: consumePlan(recipe, fridge) })}>
+                    <button
+                      type="button"
+                      disabled={consuming}
+                      onClick={() => {
+                        setConsumeNotice(null)
+                        setPreview({ day, snapshot: fridge })
+                      }}
+                    >
                       {t('plan.cooked')}
                     </button>
                   </>
@@ -154,8 +223,8 @@ export function PlanView({
                   <div>
                     <p role="status">{t('plan.consumePreview')}</p>
                     <ul>
-                      {preview.change.updates.map((change) => {
-                        const item = fridge.find((f) => f.id === change.id)
+                      {previewChange.updates.map((change) => {
+                        const item = preview.snapshot.find((f) => f.id === change.id)
                         return (
                           <li key={change.id}>
                             {t('plan.consumeUse', {
@@ -166,8 +235,8 @@ export function PlanView({
                           </li>
                         )
                       })}
-                      {preview.change.deletes.map((id) => {
-                        const item = fridge.find((f) => f.id === id)
+                      {previewChange.deletes.map((id) => {
+                        const item = preview.snapshot.find((f) => f.id === id)
                         return (
                           <li key={id}>
                             {t('plan.consumeUse', {
@@ -178,7 +247,7 @@ export function PlanView({
                           </li>
                         )
                       })}
-                      {preview.change.updates.length + preview.change.deletes.length === 0 && (
+                      {previewChange.updates.length + previewChange.deletes.length === 0 && (
                         <li>{t('plan.consumeNothing')}</li>
                       )}
                     </ul>
@@ -188,8 +257,12 @@ export function PlanView({
                     <button type="button" onClick={() => setPreview(null)}>
                       {t('plan.cancel')}
                     </button>
-                    {consumeFailed && <p role="alert">{t('plan.consumeFailed')}</p>}
                   </div>
+                )}
+                {consumeNotice?.day === day && (
+                  <p role="alert">
+                    {consumeNotice.kind === 'failed' ? t('plan.consumeFailed') : t('plan.consumeStale')}
+                  </p>
                 )}
               </DayCell>
             )
