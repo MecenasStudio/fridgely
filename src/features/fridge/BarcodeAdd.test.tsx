@@ -101,6 +101,21 @@ describe('BarcodeAdd', () => {
     expect((screen.getByLabelText('Product name') as HTMLInputElement).value).toBe('Domowy ser')
   })
 
+  it('rejects an over-long manual name before calling onAdd', async () => {
+    const onAdd = vi.fn(async () => {})
+    renderAdd(async () => null, onAdd)
+
+    fireEvent.change(screen.getByLabelText('Barcode'), { target: { value: '00000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    await screen.findByText('Product not found. Type the name yourself.')
+
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'x'.repeat(101) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(await screen.findByText('The name must be between 1 and 100 characters.')).toBeTruthy()
+    expect(onAdd).not.toHaveBeenCalled()
+  })
+
   it('hides the camera button when BarcodeDetector is missing', () => {
     expect('BarcodeDetector' in window).toBe(false)
     renderAdd(async () => null)

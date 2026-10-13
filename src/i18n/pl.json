@@ -73,7 +73,10 @@
                    "barcodeAdd":  "Dodaj",
                    "barcodeScan":  "Skanuj kamerą",
                    "barcodeScanError":  "Nie udało się uruchomić kamery. Wpisz kod ręcznie.",
-                   "addFailed":  "Nie udało się dodać produktu. Spróbuj ponownie."
+                   "addFailed":  "Nie udało się dodać produktu. Spróbuj ponownie.",
+                   "invalidName":  "Nazwa musi mieć od 1 do 100 znaków.",
+                   "invalidUnit":  "Jednostka musi mieć od 1 do 20 znaków.",
+                   "invalidQuantity":  "Ilość musi być większa od 0 i nie większa niż 100000."
                },
     "recipes":  {
                     "title":  "Nazwa przepisu",
@@ -191,6 +194,7 @@
                   "noKey":  "Brak klucza Claude. Dodaj go w Ustawieniach, żeby korzystać z AI.",
                   "sessionExpired":  "Sesja wygasła. Zaloguj się ponownie.",
                   "addFailed":  "Nie udało się dodać produktów. Lista została bez zmian.",
+                  "invalidRow":  "Wiersz {{row}} ma niepoprawne dane. Popraw go i spróbuj ponownie.",
                   "name":  "Nazwa produktu",
                   "quantity":  "Ilość",
                   "unit":  "Jednostka",

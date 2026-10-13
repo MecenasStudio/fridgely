@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AiError } from '../../lib/ai'
 import type { AiLocale, DetectedItem, PhotoPayload } from '../../lib/ai'
+import { validateItem } from '../../domain/validate'
 import type { NewFridgeItem } from './FridgeItemForm'
 
 export type Recognize = (image: PhotoPayload, locale: AiLocale) => Promise<DetectedItem[]>
@@ -49,6 +50,8 @@ export function PhotoImport({
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [added, setAdded] = useState(false)
+  /** Index of the row that stopped "Add all"; the message names that row. */
+  const [invalidRow, setInvalidRow] = useState<number | null>(null)
 
   const [readBusy, setReadBusy] = useState(false)
   const [labelDate, setLabelDate] = useState<string | null>(null)
@@ -84,11 +87,24 @@ export function PhotoImport({
 
   async function addAll() {
     if (adding || rows.length === 0) return
-    setAdding(true)
     setError(null)
+    setInvalidRow(null)
+
+    // One bad row blocks the whole batch and says which one: half-adding a photo would be
+    // harder to undo than asking the user to fix the row.
+    const checked = rows.map((row) => validateItem({ name: row.name, quantity: row.quantity, unit: row.unit }))
+    const badIndex = checked.findIndex((result) => !result.ok)
+    if (badIndex !== -1) {
+      setInvalidRow(badIndex)
+      return
+    }
+
+    setAdding(true)
     try {
-      for (const row of rows) {
-        await onAdd({ name: row.name, quantity: row.quantity, unit: row.unit, expiresOn: row.expiresOn })
+      for (let i = 0; i < rows.length; i += 1) {
+        const result = checked[i]
+        if (!result.ok) continue
+        await onAdd({ ...result.value, expiresOn: rows[i].expiresOn })
       }
       setRows([])
       setAdded(true)
@@ -202,6 +218,9 @@ export function PhotoImport({
           <button type="button" disabled={adding} onClick={() => void addAll()}>
             {t('photo.addAll')}
           </button>
+          {invalidRow !== null && (
+            <p role="alert">{t('photo.invalidRow', { row: invalidRow + 1 })}</p>
+          )}
         </div>
       )}
 
