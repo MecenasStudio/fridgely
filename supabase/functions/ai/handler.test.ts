@@ -433,4 +433,82 @@ describe('ai handler', () => {
       }
     })
   })
+
+  describe('read_label_date', () => {
+    const image = { mediaType: 'image/png' as const, data: 'BBBB' }
+    const labelBody = { task: 'read_label_date' as const, locale: 'en' as const, payload: { image } }
+
+    it('answers 200 with the date read from the label', async () => {
+      const deps = makeDeps({ callClaude: vi.fn(async () => ({ text: '{"expiresOn":"2026-11-30"}', inputTokens: 3, outputTokens: 2 })) })
+      const res = await handle(makeReq({ body: labelBody }), deps)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ expiresOn: '2026-11-30' })
+      expect(deps.recordUsage).toHaveBeenCalledWith({
+        userId: USER_ID,
+        task: 'read_label_date',
+        inputTokens: 3,
+        outputTokens: 2,
+      })
+    })
+
+    it('answers null when the model cannot read a date', async () => {
+      for (const text of ['{"expiresOn":null}', '{}']) {
+        const deps = makeDeps({ callClaude: vi.fn(async () => ({ text, inputTokens: 1, outputTokens: 1 })) })
+        const res = await handle(makeReq({ body: labelBody }), deps)
+        expect(res.status, text).toBe(200)
+        expect(res.body).toEqual({ expiresOn: null })
+      }
+    })
+
+    it('turns a broken date from the model into null instead of guessing', async () => {
+      for (const text of ['{"expiresOn":"2026-02-31"}', '{"expiresOn":"30.11.2026"}', '{"expiresOn":""}']) {
+        const deps = makeDeps({ callClaude: vi.fn(async () => ({ text, inputTokens: 1, outputTokens: 1 })) })
+        const res = await handle(makeReq({ body: labelBody }), deps)
+        expect(res.status, text).toBe(200)
+        expect(res.body).toEqual({ expiresOn: null })
+      }
+    })
+
+    it('maps a non-JSON answer to 502', async () => {
+      const deps = makeDeps({ callClaude: vi.fn(async () => ({ text: 'The label says best before 30/11/2026', inputTokens: 1, outputTokens: 1 })) })
+      const res = await handle(makeReq({ body: labelBody }), deps)
+      expect(res.status).toBe(502)
+      expect(res.body).toEqual({ error: 'UPSTREAM_ERROR' })
+    })
+
+    it('rejects a bad request and never calls Claude', async () => {
+      const deps = makeDeps()
+      const cases = [
+        { task: 'read_label_date', locale: 'en', payload: {} },
+        { task: 'read_label_date', locale: 'en', payload: { image: { mediaType: 'image/tiff', data: 'BBBB' } } },
+        { task: 'read_label_date', locale: 'en', payload: { image: { mediaType: 'image/png', data: 'B B' } } },
+      ]
+      for (const body of cases) {
+        const res = await handle(makeReq({ body }), deps)
+        expect(res.status).toBe(400)
+        expect(res.body).toEqual({ error: 'INVALID_REQUEST' })
+      }
+      expect(deps.callClaude).not.toHaveBeenCalled()
+    })
+
+    it('asks the model for the expiry date, not the production date, in the right language', async () => {
+      const calls: ClaudeCall[] = []
+      const deps = makeDeps({
+        callClaude: vi.fn(async (call: ClaudeCall) => {
+          calls.push(call)
+          return { text: '{"expiresOn":null}', inputTokens: 1, outputTokens: 1 }
+        }),
+      })
+      await handle(makeReq({ body: labelBody }), deps)
+
+      const prompt = calls[0].prompt
+      expect(prompt).toContain('best before')
+      expect(prompt).toContain('never the production date')
+      expect(prompt).toContain('dd.mm.yyyy')
+      expect(prompt).toContain('last day of that month')
+      expect(prompt).toContain('Never guess')
+      expect(calls[0].image).toEqual(image)
+    })
+  })
 })
