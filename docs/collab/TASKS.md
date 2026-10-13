@@ -6,7 +6,14 @@ Zasady pracy: `docs/collab/README.md`. Status zadania: `TODO` → `IN PROGRESS` 
 
 ## Paczka zadań 40–51: utwardzanie, odporność, testy, eksport danych
 
-STATUS: READY FOR REVIEW (zadania 40–51 wykonane, patrz podsumowanie i raporty 40–51 w `REPORTS.md`)
+STATUS: DONE (przegląd: ACCEPTED z drobnymi uwagami, wszystkie 12 zadań przyjęte)
+
+Przegląd Claude: `npm test` 336/336, `npm run build` OK, zero zmian w `supabase/`, `package.json`, `.env*`, `docs/superpowers/`. Filtr Realtime jest teraz zbudowany tylko w `src/lib/realtime.ts` (`git grep household_id=` w `src` zwraca wyłącznie ten plik i jego test), "Ugotowane" ma migawkę, wykrywanie zmiany lodówki i zamknięcie podglądu po błędzie, eksport nie zawiera pól konta, tekst prywatności zgodny z kodem. Poprawek wykonawcy: 0 z 2 w tej paczce.
+Drobne, bez blokady (do następnej paczki):
+1. `SettingsPage` woła cztery hooki danych z `household.householdId ?? ''`; przed załadowaniem domu zapytania lecą z pustym id (błąd `uuid` po stronie bazy, niewidoczny w UI, ale zbędny ruch). Przekazać `householdId` z `App` albo nie montować eksportu przed załadowaniem.
+2. Eksport planu obejmuje tylko bieżący tydzień (7 dni od dziś); nazwać to w UI ("plan tego tygodnia") albo wyeksportować cały plan.
+3. `URL.revokeObjectURL` zaraz po `click()` bywa przedwczesne w Safari; odroczyć o krótki `setTimeout`.
+4. `PlanView.isStale` unieważnia podgląd przy każdej zmianie lodówki, także cudzej i niezwiązanej ze składnikami przepisu; bezpieczne, ale może irytować (akceptowane).
 Gałąź (jedna na całą paczkę): `task/40-hardening`, utworzona z `main` (commity `8217125`, `459295f`, `4689956`, `735fc94`, `d8000f8`, `ccdf191`, `be31eda`, `16b4d82`, `2474e1c`, `18315f7`, `de21114`, `dffd6d3`, raporty `071b401`)
 
 Kontekst: poprzednie paczki są przejrzane i scalone do `main`. W przeglądzie wyszły: regresja filtra Realtime lodówki (zła składnia, ten sam kod skopiowany w czterech hookach), niebezpieczne ponawianie "Ugotowane" po częściowym błędzie i wiersze z lokalnym id `local-N` ("local-1"), na których operacje kończą się błędem. Ta paczka to naprawa tych klas błędów i utwardzenie, nie nowe funkcje (poza eksportem danych).
